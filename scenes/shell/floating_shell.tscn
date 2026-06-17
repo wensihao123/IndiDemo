@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://ds8lb4ksfqrus"]
+
+[ext_resource type="Script" uid="uid://blpq3cquuvsht" path="res://src/shell/floating_shell.gd" id="1_shell"]
+[ext_resource type="Texture2D" uid="uid://cre8sgqp3sigx" path="res://assets/sprites/bg/bg_strip_placeholder.png" id="2_bg"]
+[ext_resource type="Texture2D" uid="uid://ban8d4hvlftb3" path="res://assets/sprites/placeholder/hero_warrior_placeholder.png" id="3_hero"]
+[ext_resource type="Texture2D" uid="uid://dgj2j4by5181m" path="res://assets/sprites/placeholder/icon_handle_placeholder.png" id="4_icon"]
+
+[node name="FloatingShell" type="Control" unique_id=1792418111]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_shell")
+
+[node name="BgStrip" type="TextureRect" parent="." unique_id=660059345]
+texture_repeat = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+stretch_mode = 1
+
+[node name="MainArea" type="Control" parent="." unique_id=1634614640]
+anchors_preset = 0
+offset_right = 800.0
+offset_bottom = 250.0
+
+[node name="Hero" type="Sprite2D" parent="MainArea" unique_id=1917741598]
+position = Vector2(400, 170)
+texture = ExtResource("3_hero")
+
+[node name="Handle" type="TextureButton" parent="." unique_id=577341113]
+visible = false
+layout_mode = 0
+offset_right = 64.0
+offset_bottom = 64.0
+texture_normal = ExtResource("4_icon")
+
+[node name="CollapseBtn" type="Button" parent="." unique_id=1778308159]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -72.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 39.0
+grow_horizontal = 0
+text = "收起"
