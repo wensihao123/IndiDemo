@@ -1,6 +1,6 @@
 ---
 feature: 01-floating-window-shell
-status: in-progress
+status: done
 updated: 2026-06-18
 ---
 # HANDOFF — 悬浮窗外壳 (Floating Window Shell)
@@ -29,7 +29,8 @@ updated: 2026-06-18
 `godot.exe --headless --check-only --script floating_shell.gd` **退出码 0、无解析错**。
 **至此 设计→实现→接线→审查→清理 全链路走完,REVIEW must-fix 与 nit 均已结清,本功能完成。**
 
-- **下一棒**:`/role-producer` —— 标记 01-floating-window-shell 完成、更新 BACKLOG、拉下一项。
+- **✅ 已结项(Producer,2026-06-18)**:01 移入 BACKLOG 的 Done;Now 推进到 **02-auto-combat-loop**。
+  下一棒不再属于本功能 —— 开 `/role-game-designer 02-auto-combat-loop`(或先 `/design-jam`)起 02。
 - **留作 backlog 的非阻塞项**:R2 全局热键(失焦也响应)建议另立项;ACCEPTANCE F-BG1/F-BG2
   背景接缝/信息量待正式美术;STYLE-BIBLE 调色板 hex/线条参数待正式美术前补。
 - **⚠ 给 EI 文档修正**:INTEGRATION-STEPS 命令里的 `Godot_v4.6.3-stable_win64.exe` 在本机不存在,
