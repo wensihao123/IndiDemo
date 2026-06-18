@@ -109,6 +109,15 @@ Engine Integrator 收口步 5(切 autoload `Combat`→`PlayerState`/`Game` + 删
 注:第三批 `game_controller_test` 已断言 `players[1]` null 容错,部分补上该网。
 
 ## 待办 / 旗标
+- **[F-Arch-seat → 转 Arch Guard,先于步 5 §0 拍板] `Game` 单座 vs 持久元状态/单局拆座**。F-PS-autoload 选方案 C
+  暴露的不是接线题、是架构分叉:**C 让 `PlayerState` 升 autoload、`Game._boot` 改读 `/root/PlayerState` → 多出
+  第二条访问路径(`/root/PlayerState` 与 `Game.player_state` 并存)+ 全局可达性**——正是本次重构要杀的 God-object/
+  全局可达坏味道(B 经 `Game.player_state` 同样够到 PlayerState,无此第二门)。**但 C 预对齐一个合理未来**:把
+  `Game` 拆成「per-run RunController + 持久 `PlayerState` autoload」两座(城镇/招募/多局元系统直接读全局 PlayerState)。
+  代价:一处 `_boot` 改 + 测试隔离重做(共享单例会串 `gc.player_state.roster`,`test_reboot_restores_from_save`
+  造双 GC 会共用同一 PlayerState)。**请 Arch Guard 定 single-seat vs split-seat,并把「访问路径约定」写进
+  `ARCHITECTURE.md`**(谁可读 PlayerState、经哪条门)。EI 建议:若不立刻拆座,B 是更省的"测试干净默认"且不堵死 C;
+  既然用户已倾向 C,则由 Arch Guard 正式背书 split-seat 方向再落 §0,避免半套实现。**开 `/arch-guard 00-foundation-redesign`。**
 - **[F-PS-autoload — 已定方案 C(2026-06-19),先决 BLOCKING]** 用户拍:注册 `PlayerState` autoload + 改
   `GameController._boot` 复用 `/root/PlayerState`(不再 `PlayerState.new()`/`add_child`)。**这是 Implementer 代码改**:
   含修测试隔离(`game_controller_test` 等在 `_boot` 后写 `gc.player_state.roster`,共享单例会串状态;`test_reboot_restores_from_save`
