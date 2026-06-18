@@ -15,6 +15,10 @@ run/main_scene="res://scenes/shell/floating_shell.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+Combat="*res://src/combat/combat_director.gd"
+
 [display]
 
 window/size/viewport_width=1280
@@ -23,6 +27,10 @@ window/size/borderless=true
 window/size/always_on_top=true
 window/size/transparent=true
 window/per_pixel_transparency/allowed=true
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 
 [physics]
 

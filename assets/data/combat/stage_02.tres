@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="StageConfig" format=3 uid="uid://bktdfwj8vw80w"]
+
+[ext_resource type="Script" uid="uid://cot5ila5gsxe8" path="res://src/combat/enemy_def.gd" id="1_enemy"]
+[ext_resource type="Texture2D" uid="uid://cpb4ou8lckvr2" path="res://assets/sprites/enemies/enemy_orc_chieftain.png" id="2_jibn2"]
+[ext_resource type="Script" uid="uid://bjqg5b356k5hx" path="res://src/combat/scene_config.gd" id="2_scene"]
+[ext_resource type="Script" uid="uid://dj06j3hengcmm" path="res://src/combat/stage_config.gd" id="3_stage"]
+[ext_resource type="Texture2D" uid="uid://c6217t0obdvjx" path="res://assets/sprites/enemies/enemy_orc_elite.png" id="4_ynpjd"]
+[ext_resource type="Texture2D" uid="uid://bvir6814ti082" path="res://assets/sprites/enemies/enemy_wolf_shadow.png" id="5_rmet2"]
+[ext_resource type="Texture2D" uid="uid://bsgcpknfoiydl" path="res://assets/sprites/enemies/enemy_ogre.png" id="6_pnl30"]
+
+[sub_resource type="Resource" id="BossOrcChieftain"]
+script = ExtResource("1_enemy")
+display_name = "兽人酋长"
+max_hp = 220.0
+attack = 9.0
+sprite = ExtResource("2_jibn2")
+drop_chance = 1.0
+weight_gold = 35.0
+weight_material = 25.0
+weight_equipment = 40.0
+rarity_weight_white = 35.0
+rarity_weight_blue = 45.0
+rarity_weight_gold = 20.0
+
+[sub_resource type="Resource" id="EnemyEliteOrc"]
+script = ExtResource("1_enemy")
+display_name = "精英兽人"
+max_hp = 50.0
+attack = 5.0
+sprite = ExtResource("4_ynpjd")
+drop_chance = 0.65
+weight_gold = 65.0
+weight_equipment = 13.0
+rarity_weight_white = 78.0
+rarity_weight_gold = 4.0
+
+[sub_resource type="Resource" id="Scene1"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyEliteOrc")
+kill_count = 7
+
+[sub_resource type="Resource" id="EnemyShadowWolf"]
+script = ExtResource("1_enemy")
+display_name = "暗影狼"
+max_hp = 65.0
+attack = 6.0
+sprite = ExtResource("5_rmet2")
+drop_chance = 0.7
+weight_gold = 60.0
+weight_material = 25.0
+weight_equipment = 15.0
+rarity_weight_white = 75.0
+rarity_weight_blue = 20.0
+rarity_weight_gold = 5.0
+
+[sub_resource type="Resource" id="Scene2"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyShadowWolf")
+kill_count = 7
+
+[sub_resource type="Resource" id="EnemyOgre"]
+script = ExtResource("1_enemy")
+display_name = "食人魔"
+max_hp = 85.0
+attack = 7.0
+sprite = ExtResource("6_pnl30")
+drop_chance = 0.75
+weight_gold = 55.0
+weight_material = 27.0
+weight_equipment = 18.0
+rarity_weight_white = 72.0
+rarity_weight_blue = 22.0
+rarity_weight_gold = 6.0
+
+[sub_resource type="Resource" id="Scene3"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyOgre")
+kill_count = 7
+
+[resource]
+script = ExtResource("3_stage")
+stage_name = "第二关"
+scenes = Array[ExtResource("2_scene")]([SubResource("Scene1"), SubResource("Scene2"), SubResource("Scene3")])
+boss = SubResource("BossOrcChieftain")

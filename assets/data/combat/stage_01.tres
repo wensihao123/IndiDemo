@@ -1,0 +1,80 @@
+[gd_resource type="Resource" script_class="StageConfig" format=3 uid="uid://dxu0nk8w2jjq1"]
+
+[ext_resource type="Script" uid="uid://cot5ila5gsxe8" path="res://src/combat/enemy_def.gd" id="1_enemy"]
+[ext_resource type="Script" uid="uid://bjqg5b356k5hx" path="res://src/combat/scene_config.gd" id="2_scene"]
+[ext_resource type="Texture2D" uid="uid://dyrydg5dk14i6" path="res://assets/sprites/enemies/enemy_goblin_king.png" id="2_t1wew"]
+[ext_resource type="Script" uid="uid://dj06j3hengcmm" path="res://src/combat/stage_config.gd" id="3_stage"]
+[ext_resource type="Texture2D" uid="uid://c65vu13y4d1ph" path="res://assets/sprites/enemies/enemy_goblin.png" id="4_xavcb"]
+[ext_resource type="Texture2D" uid="uid://b6dj6un3ambsp" path="res://assets/sprites/enemies/enemy_wolf.png" id="5_ftb0x"]
+[ext_resource type="Texture2D" uid="uid://cw2pd6qrkh226" path="res://assets/sprites/enemies/enemy_orc.png" id="6_x54w0"]
+
+[sub_resource type="Resource" id="BossGoblinKing"]
+script = ExtResource("1_enemy")
+display_name = "哥布林王"
+max_hp = 90.0
+attack = 5.0
+sprite = ExtResource("2_t1wew")
+drop_chance = 1.0
+weight_gold = 40.0
+weight_material = 25.0
+weight_equipment = 35.0
+rarity_weight_white = 50.0
+rarity_weight_blue = 38.0
+rarity_weight_gold = 12.0
+
+[sub_resource type="Resource" id="EnemyGoblin"]
+script = ExtResource("1_enemy")
+display_name = "哥布林"
+max_hp = 12.0
+sprite = ExtResource("4_xavcb")
+drop_chance = 0.5
+weight_gold = 80.0
+weight_material = 15.0
+weight_equipment = 5.0
+rarity_weight_white = 88.0
+rarity_weight_blue = 10.0
+
+[sub_resource type="Resource" id="Scene1"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyGoblin")
+
+[sub_resource type="Resource" id="EnemyWolf"]
+script = ExtResource("1_enemy")
+display_name = "野狼"
+max_hp = 18.0
+attack = 2.0
+sprite = ExtResource("5_ftb0x")
+drop_chance = 0.55
+weight_gold = 75.0
+weight_material = 18.0
+weight_equipment = 7.0
+rarity_weight_white = 85.0
+rarity_weight_blue = 13.0
+
+[sub_resource type="Resource" id="Scene2"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyWolf")
+kill_count = 6
+
+[sub_resource type="Resource" id="EnemyOrc"]
+script = ExtResource("1_enemy")
+display_name = "兽人"
+max_hp = 28.0
+attack = 3.0
+sprite = ExtResource("6_x54w0")
+weight_material = 20.0
+weight_equipment = 10.0
+rarity_weight_white = 82.0
+rarity_weight_blue = 15.0
+rarity_weight_gold = 3.0
+
+[sub_resource type="Resource" id="Scene3"]
+script = ExtResource("2_scene")
+enemy = SubResource("EnemyOrc")
+kill_count = 6
+
+[resource]
+script = ExtResource("3_stage")
+stage_name = "第一关"
+scenes = Array[ExtResource("2_scene")]([SubResource("Scene1"), SubResource("Scene2"), SubResource("Scene3")])
+boss = SubResource("BossGoblinKing")

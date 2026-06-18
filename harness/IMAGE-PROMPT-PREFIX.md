@@ -1,14 +1,14 @@
-updated: 2026-06-17
+updated: 2026-06-18
 
 # IMAGE-PROMPT-PREFIX(项目级四段前缀 · 锁定)
 
 > 每条喂 image2 的 prompt 都 = 本文件的 ①②③ 前缀(逐字复用)+ ④ 排除项 + 该 asset 的具体要求。
 > ①②③ 全项目逐字一致,保证跨次生图风格稳定;**只在你明确要求时才改**(改它=改全项目观感)。
-> 状态:占位阶段锁定。**已知缺口:① 调色板 hex 尚未在 STYLE-BIBLE 锁定**,暂用描述性色调,
-> 待正式美术补 hex 后回来更新本前缀并 bump updated。
+> 状态:**正式 palette 已锁(2026-06-18,STYLE-BIBLE §4 方案 A 暖木治愈),① 已注入精确 hex**
+> (用户授权更新)。后续若改 palette,需回来同步本前缀并 bump updated。
 
 ## ① 风格锚定 / Style anchor(英文,逐字复用)
-Art style: hand-drawn 2D cartoon illustration with clean medium-weight outlines and soft cel shading, rounded chibi proportions (large head-to-body ratio), side-view (side-scroller) perspective; a warm, high-value, low-saturation cozy storybook palette (exact hex TBD); smooth painterly rendering — NOT pixel art, no hard pixelated or aliased edges, no harsh gradient-as-texture.
+Art style: hand-drawn 2D cartoon illustration with clean medium-weight outlines (warm dark-brown line color #3a2e2a, not pure black) and soft single-layer cel shading, rounded chibi proportions (large head-to-body ratio), side-view (side-scroller) perspective; a warm, high-value, low-saturation cozy storybook palette of #c98a5e (warm wood) / #f5e9d6 (cream) / #7fb069 (fresh green) / #4a7c59 (deep green) / #e8943c (warm orange accent) / #2b2536 (deep UI base); smooth painterly rendering — NOT pixel art, no hard pixelated or aliased edges, no harsh gradient-as-texture.
 
 ## ② 参考锚定 / Visual reference(英文,逐字复用)
 Visual reference: in the visual spirit of MapleStory's hand-drawn 2D look, capturing its cute rounded chibi character proportions, clean readable silhouettes, and warm cheerful storybook mood, rendered as an original work — do not copy any specific copyrighted character, logo, or scene.

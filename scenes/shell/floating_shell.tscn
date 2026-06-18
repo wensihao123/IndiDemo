@@ -1,9 +1,13 @@
 [gd_scene format=3 uid="uid://ds8lb4ksfqrus"]
 
 [ext_resource type="Script" uid="uid://blpq3cquuvsht" path="res://src/shell/floating_shell.gd" id="1_shell"]
-[ext_resource type="Texture2D" uid="uid://cre8sgqp3sigx" path="res://assets/sprites/bg/bg_strip_placeholder.png" id="2_bg"]
-[ext_resource type="Texture2D" uid="uid://ban8d4hvlftb3" path="res://assets/sprites/placeholder/hero_warrior_placeholder.png" id="3_hero"]
-[ext_resource type="Texture2D" uid="uid://dgj2j4by5181m" path="res://assets/sprites/placeholder/icon_handle_placeholder.png" id="4_icon"]
+[ext_resource type="Texture2D" uid="uid://oil24053uoh0" path="res://assets/sprites/bg/bg_strip.png" id="2_no5us"]
+[ext_resource type="Texture2D" uid="uid://cd5effhp26ygx" path="res://assets/sprites/hero/hero_warrior.png" id="3_ambe7"]
+[ext_resource type="Script" uid="uid://dymal5lsqfxj4" path="res://src/combat/combat_view.gd" id="5_combat_view"]
+[ext_resource type="Script" uid="uid://dj06j3hengcmm" path="res://src/combat/stage_config.gd" id="5_no5us"]
+[ext_resource type="Resource" uid="uid://dxu0nk8w2jjq1" path="res://assets/data/combat/stage_01.tres" id="6_stage01"]
+[ext_resource type="Resource" uid="uid://bktdfwj8vw80w" path="res://assets/data/combat/stage_02.tres" id="7_stage02"]
+[ext_resource type="Texture2D" uid="uid://v8dv1waar248" path="res://assets/sprites/ui/icon_handle.png" id="8_mubki"]
 
 [node name="FloatingShell" type="Control" unique_id=1792418111]
 layout_mode = 3
@@ -22,7 +26,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("2_bg")
+texture = ExtResource("2_no5us")
 stretch_mode = 1
 
 [node name="MainArea" type="Control" parent="." unique_id=1634614640]
@@ -32,14 +36,24 @@ offset_bottom = 250.0
 
 [node name="Hero" type="Sprite2D" parent="MainArea" unique_id=1917741598]
 position = Vector2(400, 170)
-texture = ExtResource("3_hero")
+texture = ExtResource("3_ambe7")
+
+[node name="CombatView" type="Control" parent="MainArea" unique_id=1917741599]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("5_combat_view")
+stages = Array[ExtResource("5_no5us")]([ExtResource("6_stage01"), ExtResource("7_stage02")])
 
 [node name="Handle" type="TextureButton" parent="." unique_id=577341113]
 visible = false
 layout_mode = 0
 offset_right = 64.0
 offset_bottom = 64.0
-texture_normal = ExtResource("4_icon")
+texture_normal = ExtResource("8_mubki")
 
 [node name="CollapseBtn" type="Button" parent="." unique_id=1778308159]
 layout_mode = 1
