@@ -14,6 +14,8 @@ func _enemy(drop_chance: float, w_gold: float, w_mat: float, w_equip: float) -> 
 
 func _director_with_seed(seed_value: int) -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	# 每 actor 每 tick 一击(攻速 1.0 × tick_seconds 1.0,无浮点漂移):1 攻即杀 1 血怪 → 每次击杀恰一次掉落 roll(PLAN Flag-C / Step 4)。
+	d.tick_seconds = 1.0
 	d.party = [PartyMember.new("战士", 100.0, 10.0), null, null, null]
 	d.rng.seed = seed_value
 	return d

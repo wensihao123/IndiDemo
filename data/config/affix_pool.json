@@ -1,0 +1,85 @@
+[
+  {
+    "stat": "max_hp",
+    "kind": "flat",
+    "slot_pool": ["armor", "accessory"],
+    "tiers": [
+      { "tier": 10, "min": 1.0,   "max": 5.0,   "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 9,  "min": 5.0,   "max": 10.0,  "ilvl_req": 8,  "weight": 1.0 },
+      { "tier": 8,  "min": 10.0,  "max": 18.0,  "ilvl_req": 16, "weight": 1.0 },
+      { "tier": 7,  "min": 18.0,  "max": 28.0,  "ilvl_req": 25, "weight": 1.0 },
+      { "tier": 6,  "min": 28.0,  "max": 42.0,  "ilvl_req": 34, "weight": 1.0 },
+      { "tier": 5,  "min": 42.0,  "max": 58.0,  "ilvl_req": 44, "weight": 1.0 },
+      { "tier": 4,  "min": 58.0,  "max": 75.0,  "ilvl_req": 55, "weight": 1.0 },
+      { "tier": 3,  "min": 75.0,  "max": 95.0,  "ilvl_req": 66, "weight": 1.0 },
+      { "tier": 2,  "min": 95.0,  "max": 115.0, "ilvl_req": 78, "weight": 1.0 },
+      { "tier": 1,  "min": 115.0, "max": 140.0, "ilvl_req": 90, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "crit_chance",
+    "kind": "flat",
+    "slot_pool": ["weapon", "accessory"],
+    "tiers": [
+      { "tier": 5, "min": 0.005, "max": 0.02, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 4, "min": 0.025, "max": 0.04, "ilvl_req": 20, "weight": 1.0 },
+      { "tier": 3, "min": 0.045, "max": 0.06, "ilvl_req": 40, "weight": 1.0 },
+      { "tier": 2, "min": 0.065, "max": 0.08, "ilvl_req": 60, "weight": 1.0 },
+      { "tier": 1, "min": 0.085, "max": 0.10, "ilvl_req": 80, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "attack",
+    "kind": "flat",
+    "slot_pool": ["weapon", "accessory"],
+    "tiers": [
+      { "tier": 2, "min": 1.0, "max": 3.0, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 3.0, "max": 6.0, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "attack_speed",
+    "kind": "flat",
+    "slot_pool": ["weapon", "accessory"],
+    "tiers": [
+      { "tier": 2, "min": 0.05, "max": 0.15, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 0.15, "max": 0.30, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "crit_mult",
+    "kind": "flat",
+    "slot_pool": ["weapon", "accessory"],
+    "tiers": [
+      { "tier": 2, "min": 0.1, "max": 0.3, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 0.3, "max": 0.6, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "armor",
+    "kind": "flat",
+    "slot_pool": ["armor", "accessory"],
+    "tiers": [
+      { "tier": 2, "min": 2.0,  "max": 8.0,  "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 8.0,  "max": 18.0, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "dodge_chance",
+    "kind": "flat",
+    "slot_pool": ["armor"],
+    "tiers": [
+      { "tier": 2, "min": 0.005, "max": 0.02, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 0.02,  "max": 0.05, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  },
+  {
+    "stat": "hp_regen",
+    "kind": "flat",
+    "slot_pool": ["armor", "accessory"],
+    "tiers": [
+      { "tier": 2, "min": 0.2, "max": 1.0, "ilvl_req": 1,  "weight": 1.0 },
+      { "tier": 1, "min": 1.0, "max": 2.5, "ilvl_req": 30, "weight": 1.0 }
+    ]
+  }
+]

@@ -12,6 +12,9 @@ func _enemy(hp: float, atk: float) -> EnemyDef:
 
 func test_enemy_defeated_after_enough_ticks() -> void:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	# 攻速 1.0 × tick_seconds 1.0 = 每次 tick_combat() 恰每 actor 出手一次(整数,无浮点漂移),
+	# 还原 02 "逐 tick 每 actor 一击" 的结构语义(PLAN Flag-C / Step 4)。
+	d.tick_seconds = 1.0
 	var p: Array[PartyMember] = [_member("战士", 100.0, 10.0), null, null, null]
 	d.party = p
 	var count := [0]
@@ -24,6 +27,7 @@ func test_enemy_defeated_after_enough_ticks() -> void:
 
 func test_member_down_but_party_continues_when_one_alive() -> void:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	d.tick_seconds = 1.0  # 每 actor 每 tick 一击(见 Step 4 注释)
 	var p: Array[PartyMember] = [_member("脆皮", 5.0, 2.0), _member("坦克", 200.0, 8.0), null, null]
 	d.party = p
 	var wiped := [false]
@@ -38,6 +42,7 @@ func test_member_down_but_party_continues_when_one_alive() -> void:
 
 func test_party_wiped_when_all_down() -> void:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	d.tick_seconds = 1.0  # 每 actor 每 tick 一击(见 Step 4 注释)
 	var p: Array[PartyMember] = [_member("战士", 12.0, 3.0), null, null, null]
 	d.party = p
 	var wiped := [0]

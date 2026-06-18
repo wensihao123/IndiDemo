@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-06-19" name="report_24" tests="45" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="button_countdown_test" package="test/combat" timestamp="2026-06-18T18:20:33" hostname="localhost" tests="4" failures="0" errors="0" skipped="0" flaky="0" time="0.893">
+		<testcase name="test_countdown_auto_advances_when_no_action" classname="button_countdown_test" time="0.093">
+		</testcase>
+		<testcase name="test_rest_during_countdown_cancels_auto_advance" classname="button_countdown_test" time="0.092">
+		</testcase>
+		<testcase name="test_push_executes_at_round_end_while_grinding" classname="button_countdown_test" time="0.091">
+		</testcase>
+		<testcase name="test_rest_executes_at_round_end_while_grinding" classname="button_countdown_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="combat_director_test" package="test/combat" timestamp="2026-06-18T18:20:34" hostname="localhost" tests="4" failures="0" errors="0" skipped="0" flaky="0" time="0.893">
+		<testcase name="test_enemy_defeated_after_enough_ticks" classname="combat_director_test" time="0.092">
+		</testcase>
+		<testcase name="test_member_down_but_party_continues_when_one_alive" classname="combat_director_test" time="0.077">
+		</testcase>
+		<testcase name="test_party_wiped_when_all_down" classname="combat_director_test" time="0.091">
+		</testcase>
+		<testcase name="test_init_default_party_fills_only_slot_0" classname="combat_director_test" time="0.093">
+		</testcase>
+	</testsuite>
+	<testsuite id="2" name="formula_test" package="test/combat" timestamp="2026-06-18T18:20:35" hostname="localhost" tests="13" failures="0" errors="0" skipped="0" flaky="0" time="2.834">
+		<testcase name="test_crit_doubles_a_hit_when_chance_is_one" classname="formula_test" time="0.094">
+		</testcase>
+		<testcase name="test_no_crit_when_chance_is_zero" classname="formula_test" time="0.091">
+		</testcase>
+		<testcase name="test_dodge_negates_incoming_hit_when_chance_is_one" classname="formula_test" time="0.091">
+		</testcase>
+		<testcase name="test_no_dodge_takes_full_hit_when_chance_is_zero" classname="formula_test" time="0.091">
+		</testcase>
+		<testcase name="test_armor_equal_to_k_halves_incoming_damage" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_zero_armor_takes_full_damage" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_hp_regen_heals_each_tick" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_hp_regen_capped_at_max_hp" classname="formula_test" time="0.093">
+		</testcase>
+		<testcase name="test_attack_speed_governs_hit_frequency" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_double_attack_speed_roughly_doubles_hits" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_soft_enrage_triggers_once_after_threshold" classname="formula_test" time="0.092">
+		</testcase>
+		<testcase name="test_enrage_amplifies_enemy_damage" classname="formula_test" time="0.091">
+		</testcase>
+		<testcase name="test_start_battle_resets_enrage_state" classname="formula_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="3" name="loot_test" package="test/combat" timestamp="2026-06-18T18:20:38" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="1.095">
+		<testcase name="test_no_drop_when_chance_zero" classname="loot_test" time="0.096">
+		</testcase>
+		<testcase name="test_always_drops_when_chance_one" classname="loot_test" time="0.093">
+		</testcase>
+		<testcase name="test_kind_and_rarity_values_are_valid" classname="loot_test" time="0.096">
+		</testcase>
+		<testcase name="test_gold_kind_always_white_rarity" classname="loot_test" time="0.094">
+		</testcase>
+		<testcase name="test_drop_distribution_in_expected_range" classname="loot_test" time="0.102">
+		</testcase>
+	</testsuite>
+	<testsuite id="4" name="progression_test" package="test/combat" timestamp="2026-06-18T18:20:39" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="1.324">
+		<testcase name="test_cursor_advances_through_scenes_to_boss" classname="progression_test" time="0.094">
+		</testcase>
+		<testcase name="test_kill_count_gates_scene_advance" classname="progression_test" time="0.092">
+		</testcase>
+		<testcase name="test_boss_kill_unlocks_next_stage_permanently" classname="progression_test" time="0.092">
+		</testcase>
+		<testcase name="test_never_refights_cleared_boss" classname="progression_test" time="0.076">
+		</testcase>
+		<testcase name="test_party_heals_full_after_clearing_a_scene" classname="progression_test" time="0.091">
+		</testcase>
+		<testcase name="test_current_enemy_def_returns_boss_at_boss_scene" classname="progression_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="5" name="retreat_test" package="test/combat" timestamp="2026-06-18T18:20:41" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="1.355">
+		<testcase name="test_wipe_in_mid_scene_retreats_one_scene_back" classname="retreat_test" time="0.094">
+		</testcase>
+		<testcase name="test_wipe_at_first_scene_of_non_first_stage_retreats_to_prev_stage_last_scene" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_wipe_at_first_scene_of_first_stage_grinds_in_place" classname="retreat_test" time="0.090">
+		</testcase>
+		<testcase name="test_wipe_at_boss_retreats_to_last_scene_and_targets_boss" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_grinding_does_not_advance_cursor" classname="retreat_test" time="0.091">
+		</testcase>
+		<testcase name="test_grind_round_heals_party_so_hp_does_not_erode" classname="retreat_test" time="0.093">
+		</testcase>
+	</testsuite>
+	<testsuite id="6" name="stage_config_test" package="test/combat" timestamp="2026-06-18T18:20:42" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="1.125">
+		<testcase name="test_stage_01_loads_with_three_scenes_and_boss" classname="stage_config_test" time="0.098">
+		</testcase>
+		<testcase name="test_stage_01_scenes_have_enemy_and_kill_count" classname="stage_config_test" time="0.095">
+		</testcase>
+		<testcase name="test_difficulty_increases_across_scenes" classname="stage_config_test" time="0.096">
+		</testcase>
+		<testcase name="test_stage_02_loads_and_scene1_harder_than_stage1_scene3" classname="stage_config_test" time="0.100">
+		</testcase>
+		<testcase name="test_loot_fields_in_valid_range" classname="stage_config_test" time="0.101">
+		</testcase>
+	</testsuite>
+	<testsuite id="7" name="tick_driver_test" package="test/combat" timestamp="2026-06-18T18:20:44" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.480">
+		<testcase name="test_same_sim_time_yields_same_tick_count_regardless_of_frame_size" classname="tick_driver_test" time="0.095">
+		</testcase>
+		<testcase name="test_accumulator_carries_remainder_across_frames" classname="tick_driver_test" time="0.092">
+		</testcase>
+	</testsuite>
+</testsuites>

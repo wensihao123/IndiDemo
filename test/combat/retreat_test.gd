@@ -23,6 +23,8 @@ func _hard_stage(p_name: String) -> StageConfig:
 
 func _weak_director() -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	# 每 actor 每 tick 一击(攻速 1.0 × tick_seconds 1.0,无浮点漂移):敌人一击秒脆皮 → 团灭确定(PLAN Flag-C / Step 4)。
+	d.tick_seconds = 1.0
 	d.party = [PartyMember.new("脆皮", 5.0, 1.0), null, null, null]
 	return d
 
@@ -100,6 +102,7 @@ func test_grind_round_heals_party_so_hp_does_not_erode() -> void:
 	# 战士 hp100/atk100;grind 怪 hp150/atk10、kill_count=2;scene1 致命 → 卡 (0,1) 团灭退 (0,0) 刷。
 	# 刷一轮(2 杀)中持续受伤,刷满 kill_count → 全队回满,血不会越刷越低(用户报的 bug)。
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	d.tick_seconds = 1.0  # 每 actor 每 tick 一击,保 90/90/80/100 回血算术语义(见 Step 4 注释)
 	d.party = [PartyMember.new("战士", 100.0, 100.0), null, null, null]
 	var st := StageConfig.new()
 	st.stage_name = "卡关回血"

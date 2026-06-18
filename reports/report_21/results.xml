@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-06-19" name="report_21" tests="56" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="ai_combat_test" package="test/core/combat" timestamp="2026-06-18T18:06:31" hostname="localhost" tests="4" failures="0" errors="0" skipped="0" flaky="0" time="0.901">
+		<testcase name="test_selects_front_most_living" classname="ai_combat_test" time="0.093">
+		</testcase>
+		<testcase name="test_skips_dead_returns_next_living" classname="ai_combat_test" time="0.091">
+		</testcase>
+		<testcase name="test_all_dead_returns_null" classname="ai_combat_test" time="0.091">
+		</testcase>
+		<testcase name="test_in_range_is_placeholder_true" classname="ai_combat_test" time="0.091">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="arena_loot_test" package="test/core/combat" timestamp="2026-06-18T18:06:32" hostname="localhost" tests="3" failures="0" errors="0" skipped="0" flaky="0" time="0.688">
+		<testcase name="test_enemy_death_drops_item_with_enemy_item_level_into_player_state" classname="arena_loot_test" time="0.093">
+		</testcase>
+		<testcase name="test_defeat_and_drop_fire_from_same_kill_in_order" classname="arena_loot_test" time="0.091">
+		</testcase>
+		<testcase name="test_no_drop_when_pipeline_not_wired" classname="arena_loot_test" time="0.091">
+		</testcase>
+	</testsuite>
+	<testsuite id="2" name="button_countdown_test" package="test/core/combat" timestamp="2026-06-18T18:06:33" hostname="localhost" tests="4" failures="0" errors="0" skipped="0" flaky="0" time="0.902">
+		<testcase name="test_countdown_auto_advances_when_no_action" classname="button_countdown_test" time="0.093">
+		</testcase>
+		<testcase name="test_rest_during_countdown_cancels_auto_advance" classname="button_countdown_test" time="0.092">
+		</testcase>
+		<testcase name="test_push_executes_at_round_end_while_grinding" classname="button_countdown_test" time="0.091">
+		</testcase>
+		<testcase name="test_rest_executes_at_round_end_while_grinding" classname="button_countdown_test" time="0.090">
+		</testcase>
+	</testsuite>
+	<testsuite id="3" name="combat_arena_test" package="test/core/combat" timestamp="2026-06-18T18:06:34" hostname="localhost" tests="19" failures="0" errors="0" skipped="0" flaky="0" time="4.098">
+		<testcase name="test_crit_doubles_a_hit_when_chance_is_one" classname="combat_arena_test" time="0.093">
+		</testcase>
+		<testcase name="test_no_crit_when_chance_is_zero" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_dodge_negates_incoming_hit_when_chance_is_one" classname="combat_arena_test" time="0.091">
+		</testcase>
+		<testcase name="test_no_dodge_takes_full_hit_when_chance_is_zero" classname="combat_arena_test" time="0.093">
+		</testcase>
+		<testcase name="test_armor_equal_to_k_halves_incoming_damage" classname="combat_arena_test" time="0.091">
+		</testcase>
+		<testcase name="test_zero_armor_takes_full_damage" classname="combat_arena_test" time="0.091">
+		</testcase>
+		<testcase name="test_hp_regen_heals_each_tick" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_hp_regen_capped_at_max_hp" classname="combat_arena_test" time="0.091">
+		</testcase>
+		<testcase name="test_attack_speed_governs_hit_frequency" classname="combat_arena_test" time="0.079">
+		</testcase>
+		<testcase name="test_double_attack_speed_roughly_doubles_hits" classname="combat_arena_test" time="0.094">
+		</testcase>
+		<testcase name="test_soft_enrage_triggers_once_after_threshold" classname="combat_arena_test" time="0.077">
+		</testcase>
+		<testcase name="test_enrage_amplifies_enemy_damage" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_start_battle_resets_enrage_state" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_enemy_defeated_after_enough_ticks" classname="combat_arena_test" time="0.076">
+		</testcase>
+		<testcase name="test_member_down_but_party_continues_when_one_alive" classname="combat_arena_test" time="0.094">
+		</testcase>
+		<testcase name="test_party_wiped_when_all_down" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_single_character_roster_yields_one_living_member" classname="combat_arena_test" time="0.076">
+		</testcase>
+		<testcase name="test_same_sim_time_yields_same_tick_count_regardless_of_frame_size" classname="combat_arena_test" time="0.092">
+		</testcase>
+		<testcase name="test_accumulator_carries_remainder_across_frames" classname="combat_arena_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="4" name="entity_test" package="test/core/combat" timestamp="2026-06-18T18:06:38" hostname="localhost" tests="4" failures="0" errors="0" skipped="0" flaky="0" time="0.907">
+		<testcase name="test_from_character_injects_base_and_equipment" classname="entity_test" time="0.094">
+		</testcase>
+		<testcase name="test_from_enemy_def_reads_enemy_stats" classname="entity_test" time="0.092">
+		</testcase>
+		<testcase name="test_take_damage_floors_at_zero" classname="entity_test" time="0.092">
+		</testcase>
+		<testcase name="test_heal_caps_at_max_hp" classname="entity_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="5" name="progression_test" package="test/core/combat" timestamp="2026-06-18T18:06:39" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="1.355">
+		<testcase name="test_cursor_advances_through_scenes_to_boss" classname="progression_test" time="0.093">
+		</testcase>
+		<testcase name="test_kill_count_gates_scene_advance" classname="progression_test" time="0.092">
+		</testcase>
+		<testcase name="test_boss_kill_unlocks_next_stage_permanently" classname="progression_test" time="0.092">
+		</testcase>
+		<testcase name="test_never_refights_cleared_boss" classname="progression_test" time="0.094">
+		</testcase>
+		<testcase name="test_party_heals_full_after_clearing_a_scene" classname="progression_test" time="0.092">
+		</testcase>
+		<testcase name="test_current_enemy_def_returns_boss_at_boss_scene" classname="progression_test" time="0.091">
+		</testcase>
+	</testsuite>
+	<testsuite id="6" name="retreat_test" package="test/core/combat" timestamp="2026-06-18T18:06:41" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="1.328">
+		<testcase name="test_wipe_in_mid_scene_retreats_one_scene_back" classname="retreat_test" time="0.093">
+		</testcase>
+		<testcase name="test_wipe_at_first_scene_of_non_first_stage_retreats_to_prev_stage_last_scene" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_wipe_at_first_scene_of_first_stage_grinds_in_place" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_wipe_at_boss_retreats_to_last_scene_and_targets_boss" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_grinding_does_not_advance_cursor" classname="retreat_test" time="0.092">
+		</testcase>
+		<testcase name="test_grind_round_heals_party_so_hp_does_not_erode" classname="retreat_test" time="0.092">
+		</testcase>
+	</testsuite>
+	<testsuite id="7" name="skill_component_test" package="test/core/combat" timestamp="2026-06-18T18:06:42" hostname="localhost" tests="10" failures="0" errors="0" skipped="0" flaky="0" time="2.220">
+		<testcase name="test_accumulate_yields_one_swing_per_unit" classname="skill_component_test" time="0.094">
+		</testcase>
+		<testcase name="test_accumulate_yields_multiple_swings" classname="skill_component_test" time="0.093">
+		</testcase>
+		<testcase name="test_accumulate_carries_remainder" classname="skill_component_test" time="0.091">
+		</testcase>
+		<testcase name="test_crit_doubles_when_chance_is_one" classname="skill_component_test" time="0.093">
+		</testcase>
+		<testcase name="test_no_crit_when_chance_is_zero" classname="skill_component_test" time="0.091">
+		</testcase>
+		<testcase name="test_dodge_negates_hit_when_chance_is_one" classname="skill_component_test" time="0.093">
+		</testcase>
+		<testcase name="test_no_dodge_takes_full_when_chance_is_zero" classname="skill_component_test" time="0.092">
+		</testcase>
+		<testcase name="test_armor_equal_to_k_halves_damage" classname="skill_component_test" time="0.091">
+		</testcase>
+		<testcase name="test_zero_armor_takes_full_damage" classname="skill_component_test" time="0.093">
+		</testcase>
+		<testcase name="test_enrage_damage_mult_scales_raw" classname="skill_component_test" time="0.092">
+		</testcase>
+	</testsuite>
+</testsuites>

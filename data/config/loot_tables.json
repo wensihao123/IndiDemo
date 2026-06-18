@@ -1,0 +1,9 @@
+{
+  "rarity_affix_count": {
+    "white": [0, 0],
+    "blue": [1, 2],
+    "gold": [3, 4]
+  },
+  "decompose_threshold": "white",
+  "material_per_decompose": 1
+}

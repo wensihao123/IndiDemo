@@ -26,7 +26,9 @@ func _stage(p_name: String, kills: Array, boss_hp: float) -> StageConfig:
 
 func _director() -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
-	# 强战士:1 击必杀 1 血怪,推进完全确定。
+	# 攻速 1.0 × tick_seconds 1.0 = 每次 tick_combat() 每 actor 恰一击(无浮点漂移),
+	# 还原 02 "1 击必杀 1 血怪、推进完全确定" 的语义(PLAN Flag-C / Step 4)。
+	d.tick_seconds = 1.0
 	d.party = [PartyMember.new("战士", 1000.0, 100.0), null, null, null]
 	return d
 
@@ -94,6 +96,7 @@ func test_party_heals_full_after_clearing_a_scene() -> void:
 	# 战士 hp100/atk100;场景0 怪 hp150/atk10 → tick1 怪 150→50 还手(战士 100→90),
 	# tick2 怪 50→0 死、清场进场景1 → 全队回满(过场景回血)。
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	d.tick_seconds = 1.0  # 每 actor 每 tick 一击,保 90/100 算术语义(见 Step 4 注释)
 	d.party = [PartyMember.new("战士", 100.0, 100.0), null, null, null]
 	var st := StageConfig.new()
 	st.stage_name = "回血关"

@@ -1,0 +1,29 @@
+{
+  "weapon": {
+    "slot": "weapon",
+    "signature_mode": "all",
+    "signature_axes": ["attack", "attack_speed"],
+    "base_curves": {
+      "attack": { "base": 3.0, "per_ilvl": 0.5 },
+      "attack_speed": { "base": 1.0, "per_ilvl": 0.01 }
+    }
+  },
+  "armor": {
+    "slot": "armor",
+    "signature_mode": "all",
+    "signature_axes": ["armor"],
+    "base_curves": {
+      "armor": { "base": 5.0, "per_ilvl": 1.0 }
+    }
+  },
+  "accessory": {
+    "slot": "accessory",
+    "signature_mode": "pick_one",
+    "signature_axes": ["max_hp", "dodge_chance", "hp_regen"],
+    "base_curves": {
+      "max_hp": { "base": 10.0, "per_ilvl": 2.0 },
+      "dodge_chance": { "base": 0.01, "per_ilvl": 0.001 },
+      "hp_regen": { "base": 0.5, "per_ilvl": 0.1 }
+    }
+  }
+}

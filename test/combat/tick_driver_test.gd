@@ -20,7 +20,12 @@ func _trivial_stage() -> Array[StageConfig]:
 
 func _director() -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
-	d.party = [PartyMember.new("战士", 1000.0, 100.0), null, null, null]
+	# 本 suite 测累加器(必须保 tick_seconds=0.1 以验 0.05+0.05 跨帧)。给战士高攻速,
+	# 使 attack_speed × tick_seconds ≥ 1.0 → 每 tick 至少出手一次;1 血怪 + 首杀 break + 击杀后
+	# start_battle 复位出手进度 → 每 tick 恰一杀,还原"每 tick 一杀"的累加器观测(PLAN Flag-C / Step 4)。
+	var warrior := PartyMember.new("战士", 1000.0, 100.0)
+	warrior.attack_speed = 15.0
+	d.party = [warrior, null, null, null]
 	d.tick_seconds = 0.1
 	return d
 

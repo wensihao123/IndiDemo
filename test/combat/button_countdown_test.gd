@@ -30,12 +30,15 @@ func _quick_clear_stages() -> Array[StageConfig]:
 
 func _strong_director() -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	# 每 actor 每 tick 一击(攻速 1.0 × tick_seconds 1.0,无浮点漂移),还原 02 逐 tick 确定推进(PLAN Flag-C / Step 4)。
+	d.tick_seconds = 1.0
 	d.party = [PartyMember.new("战士", 1000.0, 100.0), null, null, null]
 	return d
 
 # 混合关:scene0 无害可杀、scene1 致命 → 用于制造 GRINDING 态。
 func _grind_director() -> CombatDirector:
 	var d: CombatDirector = auto_free(CombatDirector.new())
+	d.tick_seconds = 1.0  # 每 actor 每 tick 一击(见 Step 4 注释):脆皮被秒 → GRINDING 确定
 	d.party = [PartyMember.new("脆皮", 5.0, 1.0), null, null, null]
 	return d
 

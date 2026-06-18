@@ -1,6 +1,6 @@
 extends Control
 class_name CombatView
-## MainArea 内的战斗视图(PLAN D9 / step 8):订阅 Combat(autoload)信号 + 每帧读当前态渲染。
+## MainArea 内的战斗视图(REFACTOR-01 层6):订阅 Game(autoload)的 arena+progression 信号 + 每帧读态渲染。
 ## 纯读出、不补演 —— 收起时隐藏、模拟照跑;展开直接画当前态(FEATURE-DESIGN §3)。
 ## 符号/轻演出版:敌人用占位 primitive,伤害飘字 + 战斗日志 + 进度读出 + 推进/修整按钮 + 掉落分级 FX。
 ## 正式敌人符号 / 蓝光柱 / 金光 FX / 音效 = Art Spec → Image Prompt 下游补(PLAN §5 Flag)。
@@ -30,9 +30,10 @@ const ENEMY_DISPLAY_MAX_H := 125.0
 const FX_LIGHT_PILLAR := preload("res://assets/sprites/fx/fx_light_pillar.png")
 const FX_LOOT_SPARKLE := preload("res://assets/sprites/fx/fx_loot_sparkle.png")
 
-var _combat: Node = null
+var _gc: Node = null              # /root/Game(GameController)
+var _arena: CombatArena = null    # _gc.arena(单局战斗)
+var _prog: ProgressionController = null  # _gc.progression(跨场推进)
 var _log: Array[String] = []
-var _last_enemy_hp := 0.0
 # 小队状态栏:每格一行(名字 + 血条 + 数值),v1 只填第 0 格,结构支持 4 格。
 var _party_name: Array[Label] = []
 var _party_hp_bg: Array[ColorRect] = []
@@ -47,6 +48,7 @@ var _party_hp_text: Array[Label] = []
 @onready var _enemy_hp_bar_bg := ColorRect.new()
 @onready var _enemy_hp_bar := ColorRect.new()
 @onready var _countdown_label := Label.new()
+@onready var _enrage_label := Label.new()  # 敌人软狂暴横幅(克制:窗内一行,读 enraged 态)
 @onready var _push_btn := Button.new()
 @onready var _rest_btn := Button.new()
 @onready var _flash := ColorRect.new()
@@ -57,24 +59,29 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
-	_combat = get_node_or_null("/root/Combat")
-	if _combat == null:
-		_progress_label.text = "(无 Combat 单例)"
+	_gc = get_node_or_null("/root/Game")
+	if _gc == null:
+		_progress_label.text = "(无 Game 单例)"
 		return
-	_combat.enemy_defeated.connect(_on_enemy_defeated)
-	_combat.party_wiped.connect(_on_party_wiped)
-	_combat.boss_cleared.connect(_on_boss_cleared)
-	_combat.loot_dropped.connect(_on_loot_dropped)
-	_combat.rest_requested.connect(_on_rest_requested)
-	_push_btn.pressed.connect(func(): _combat.request_push())
-	_rest_btn.pressed.connect(func(): _combat.request_rest())
+	_arena = _gc.arena
+	_prog = _gc.progression
+	_arena.enemy_defeated.connect(_on_enemy_defeated)
+	_arena.party_wiped.connect(_on_party_wiped)
+	_arena.hit_dealt.connect(_on_hit_dealt)
+	_arena.player_dodged.connect(_on_player_dodged)
+	_arena.enemy_enraged.connect(_on_enemy_enraged)
+	_arena.item_dropped.connect(_on_item_dropped)
+	_prog.boss_cleared.connect(_on_boss_cleared)
+	_prog.rest_requested.connect(_on_rest_requested)
+	_push_btn.pressed.connect(func(): _prog.request_push())
+	_rest_btn.pressed.connect(func(): _prog.request_rest())
 	if not stages.is_empty():
-		_combat.begin_run(stages)
+		_gc.begin_run(stages)
 	_push_log("⚔ 战斗开始")
 
 
 func _process(_delta: float) -> void:
-	if _combat == null or not visible:
+	if _gc == null or not visible:
 		return
 	_update_enemy()
 	_update_party()
@@ -84,30 +91,26 @@ func _process(_delta: float) -> void:
 # --- 渲染 ---------------------------------------------------------------
 
 func _update_enemy() -> void:
-	var alive: bool = _combat.has_living_enemy()
+	var living: Entity = _living_enemy()
+	var alive: bool = living != null
 	_enemy_name.visible = alive
 	_enemy_hp_bar_bg.visible = alive
 	_enemy_hp_bar.visible = alive
 	if not alive:
 		_enemy_sprite.visible = false
 		_enemy_panel.visible = false
-		_last_enemy_hp = 0.0
 		return
-	var def: EnemyDef = _combat.current_enemy_def()
+	var def: EnemyDef = _prog.current_enemy_def()
 	var tex: Texture2D = def.sprite if def != null else null
 	# 有贴图 → 显示正式敌人(脚底落地平线、按显示高缩放);无贴图 → 回退到占位色块。
 	_enemy_sprite.visible = tex != null
 	_enemy_panel.visible = tex == null
 	if tex != null and _enemy_sprite.texture != tex:
 		_layout_enemy_sprite(tex)
-	var hp: float = _combat.enemy_hp()
-	var maxhp: float = def.max_hp if def != null else maxf(hp, 1.0)
+	var hp: float = living.current_hp
+	var maxhp: float = living.max_hp()
 	if def != null:
 		_enemy_name.text = def.display_name
-	# 伤害飘字:从敌人血量逐帧下降推出(视图读出,不需新信号)。
-	if _last_enemy_hp > 0.0 and hp < _last_enemy_hp:
-		_spawn_damage_float(_last_enemy_hp - hp)
-	_last_enemy_hp = hp
 	var frac := clampf(hp / maxhp, 0.0, 1.0) if maxhp > 0.0 else 0.0
 	_enemy_hp_bar.size = Vector2(120.0 * frac, 8.0)
 
@@ -123,53 +126,66 @@ func _layout_enemy_sprite(tex: Texture2D) -> void:
 	_enemy_sprite.position = Vector2(ENEMY_CENTER_X - disp_w * 0.5, ENEMY_GROUND_Y - disp_h)
 
 
+# 第一个存活敌实体(血量从战斗壳读,名字/贴图仍走 def）。
+func _living_enemy() -> Entity:
+	for e in _arena.enemies:
+		if e != null and e.is_alive():
+			return e
+	return null
+
+
 func _update_party() -> void:
-	var members: Array = _combat.party
+	# 名字取持久 Character(party_characters),血/存活取 per-run Entity(arena.players),两者同序。
+	var ents: Array = _arena.players
+	var chars: Array = _gc.party_characters
 	for i in _party_name.size():
-		var m = members[i] if i < members.size() else null
-		var present: bool = m != null
+		var e: Entity = ents[i] if i < ents.size() else null
+		var present: bool = e != null
 		_party_name[i].visible = present
 		_party_hp_bg[i].visible = present
 		_party_hp_bar[i].visible = present
 		_party_hp_text[i].visible = present
 		if not present:
 			continue
-		var maxhp: float = m.max_hp
-		var hp: float = m.current_hp
+		var maxhp: float = e.max_hp()
+		var hp: float = e.current_hp
 		var frac := clampf(hp / maxhp, 0.0, 1.0) if maxhp > 0.0 else 0.0
-		_party_name[i].text = m.display_name
+		var c: Character = chars[i] if i < chars.size() else null
+		_party_name[i].text = c.display_name if c != null else "战士"
 		_party_hp_bar[i].size.x = PARTY_HP_BAR_W * frac
-		_party_hp_bar[i].color = PARTY_ALIVE_COLOR if m.is_alive() else PARTY_DEAD_COLOR
+		_party_hp_bar[i].color = PARTY_ALIVE_COLOR if e.is_alive() else PARTY_DEAD_COLOR
 		_party_hp_text[i].text = "%d/%d" % [int(ceil(hp)), int(maxhp)]
 
 
 func _update_progress_and_buttons() -> void:
 	_progress_label.text = _progress_text()
-	var mode: int = _combat.mode
-	var Mode := CombatDirector.Mode
+	var mode: int = _prog.mode
+	var Mode := ProgressionController.Mode
 	var grinding := mode == Mode.GRINDING
 	var countdown := mode == Mode.STAGE_CLEAR_COUNTDOWN
 	_push_btn.visible = grinding
 	_rest_btn.visible = grinding or countdown
 	_countdown_label.visible = countdown
 	if countdown:
-		_countdown_label.text = "通关!%.1fs 后推进" % maxf(0.0, _combat.countdown_remaining)
+		_countdown_label.text = "通关!%.1fs 后推进" % maxf(0.0, _prog.countdown_remaining)
+	# 软狂暴横幅:只要当前敌人处于狂暴态就常驻显示(start_battle 复位 enraged → 自动消失)。
+	_enrage_label.visible = _arena.has_living_enemy() and _arena.enraged
 
 
 func _progress_text() -> String:
-	var s: int = _combat.cur_stage
-	var sc: int = _combat.cur_scene
+	var s: int = _prog.cur_stage
+	var sc: int = _prog.cur_scene
 	var stage_no := s + 1
-	match _combat.mode:
-		CombatDirector.Mode.RESTING:
+	match _prog.mode:
+		ProgressionController.Mode.RESTING:
 			return "修整中(占位 · 城镇 = 04)"
-		CombatDirector.Mode.STAGE_CLEAR_COUNTDOWN:
+		ProgressionController.Mode.STAGE_CLEAR_COUNTDOWN:
 			return "第 %d 关 · 通关" % stage_no
-		CombatDirector.Mode.GRINDING:
-			var where := "Boss" if sc == CombatDirector.BOSS_SCENE else "场景 %d/3" % (sc + 1)
+		ProgressionController.Mode.GRINDING:
+			var where := "Boss" if sc == ProgressionController.BOSS_SCENE else "场景 %d/3" % (sc + 1)
 			return "第 %d 关 · %s · 卡关刷怪" % [stage_no, where]
 		_:
-			if sc == CombatDirector.BOSS_SCENE:
+			if sc == ProgressionController.BOSS_SCENE:
 				return "第 %d 关 · Boss" % stage_no
 			return "第 %d 关 · 场景 %d/3" % [stage_no, sc + 1]
 
@@ -193,8 +209,28 @@ func _on_rest_requested() -> void:
 	_push_log("🏕 修整(占位)")
 
 
-func _on_loot_dropped(kind: StringName, rarity: StringName) -> void:
-	_push_log("💎 掉落 %s(%s)" % [_kind_text(kind), _rarity_text(rarity)])
+func _on_hit_dealt(amount: float, is_crit: bool) -> void:
+	# 每次我方出手一次,飘一次伤害字;暴击放大 + 变色(让死因/输出可读,PLAN D7/F7)。
+	# 收起态(后台 tick 主态)不建飘字节点:本视图只在可见时渲染,模拟照跑(同 _process 那道闸)。
+	if not visible:
+		return
+	_spawn_damage_float(amount, is_crit)
+
+
+func _on_player_dodged(member_index: int) -> void:
+	# 闪避:在被攻击成员的血条行飘 "MISS"(读出"为什么没掉血")。收起态不渲染(见 _on_hit_dealt)。
+	if not visible:
+		return
+	_spawn_miss_float(member_index)
+
+
+func _on_enemy_enraged() -> void:
+	_push_log("🔥 敌人狂暴!伤害随时间攀升")
+
+
+func _on_item_dropped(inst: ItemInstance, dest: StringName) -> void:
+	var rarity: StringName = inst.rarity
+	_push_log("💎 掉落 %s 装备 → %s" % [_rarity_text(rarity), _dest_text(dest)])
 	match rarity:
 		&"blue":
 			_spawn_pillar(RARITY_COLOR[&"blue"])
@@ -206,16 +242,32 @@ func _on_loot_dropped(kind: StringName, rarity: StringName) -> void:
 
 # --- FX(占位)----------------------------------------------------------
 
-func _spawn_damage_float(amount: float) -> void:
+func _spawn_damage_float(amount: float, is_crit := false) -> void:
 	var lbl := Label.new()
-	lbl.text = "-%d" % int(round(amount))
+	lbl.text = ("暴击 -%d" % int(round(amount))) if is_crit else ("-%d" % int(round(amount)))
 	lbl.position = Vector2(ENEMY_CENTER_X + randf_range(-20, 12), ENEMY_GROUND_Y - 110.0)
-	lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
+	lbl.add_theme_color_override("font_color", Color(1, 0.45, 0.25) if is_crit else Color(1, 0.9, 0.4))
+	lbl.add_theme_font_size_override("font_size", 22 if is_crit else 14)
 	_fx_layer.add_child(lbl)
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(lbl, "position:y", lbl.position.y - 36.0, 0.6)
 	tw.tween_property(lbl, "modulate:a", 0.0, 0.6)
+	tw.chain().tween_callback(lbl.queue_free)
+
+
+func _spawn_miss_float(member_index: int) -> void:
+	var lbl := Label.new()
+	lbl.text = "MISS"
+	var row_y := 42.0 + member_index * 24.0
+	lbl.position = Vector2(120.0, row_y - 8.0)
+	lbl.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+	lbl.add_theme_font_size_override("font_size", 13)
+	_fx_layer.add_child(lbl)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lbl, "position:y", lbl.position.y - 22.0, 0.55)
+	tw.tween_property(lbl, "modulate:a", 0.0, 0.55)
 	tw.chain().tween_callback(lbl.queue_free)
 
 
@@ -273,12 +325,12 @@ func _push_log(line: String) -> void:
 	_log_label.text = "\n".join(_log)
 
 
-func _kind_text(kind: StringName) -> String:
-	match kind:
-		&"gold": return "金币"
-		&"material": return "材料"
-		&"equipment": return "装备"
-		_: return String(kind)
+func _dest_text(dest: StringName) -> String:
+	match dest:
+		LootIntake.EQUIPPED: return "装备"
+		LootIntake.DECOMPOSED: return "分解"
+		LootIntake.BAGGED: return "入包"
+		_: return String(dest)
 
 
 func _rarity_text(rarity: StringName) -> String:
@@ -293,7 +345,7 @@ func _rarity_text(rarity: StringName) -> String:
 
 ## 左上小队状态栏:每格一行 名字 + 血条底 + 血条 + 数值;空格隐藏(_update_party 控制)。
 func _build_party_bars() -> void:
-	var slots: int = CombatDirector.PARTY_SLOTS
+	var slots: int = GameController.PARTY_SLOTS
 	for i in slots:
 		var row_y := 42.0 + i * 24.0
 		var nm := Label.new()
@@ -376,6 +428,13 @@ func _build_ui() -> void:
 	_countdown_label.add_theme_font_size_override("font_size", 16)
 	_countdown_label.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	add_child(_countdown_label)
+
+	_enrage_label.text = "🔥 敌人狂暴"
+	_enrage_label.position = Vector2(560, 40)
+	_enrage_label.add_theme_font_size_override("font_size", 15)
+	_enrage_label.add_theme_color_override("font_color", Color(1, 0.4, 0.3))
+	_enrage_label.visible = false
+	add_child(_enrage_label)
 
 	_push_btn.text = "推进"
 	_push_btn.position = Vector2(660, 12)
