@@ -37,6 +37,7 @@ rarity_weight_blue = 10.0
 
 [sub_resource type="Resource" id="Scene1"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyGoblin"), SubResource("EnemyGoblin")])
 enemy = SubResource("EnemyGoblin")
 
 [sub_resource type="Resource" id="EnemyWolf"]
@@ -53,8 +54,23 @@ weight_equipment = 7.0
 rarity_weight_white = 85.0
 rarity_weight_blue = 13.0
 
+[sub_resource type="Resource" id="RangedSlingerLow"]
+script = ExtResource("1_enemy")
+display_name = "投石哥布林"
+position_class = 1
+max_hp = 11.0
+sprite = ExtResource("4_xavcb")
+drop_chance = 0.5
+item_level = 3
+weight_gold = 78.0
+weight_material = 16.0
+weight_equipment = 6.0
+rarity_weight_white = 86.0
+rarity_weight_blue = 12.0
+
 [sub_resource type="Resource" id="Scene2"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyWolf"), SubResource("EnemyWolf"), SubResource("RangedSlingerLow")])
 enemy = SubResource("EnemyWolf")
 kill_count = 6
 
@@ -71,8 +87,23 @@ rarity_weight_white = 82.0
 rarity_weight_blue = 15.0
 rarity_weight_gold = 3.0
 
+[sub_resource type="Resource" id="RangedSlingerMid"]
+script = ExtResource("1_enemy")
+display_name = "投石兽人"
+position_class = 1
+max_hp = 16.0
+attack = 2.0
+sprite = ExtResource("6_x54w0")
+drop_chance = 0.5
+item_level = 6
+weight_material = 18.0
+weight_equipment = 9.0
+rarity_weight_white = 84.0
+rarity_weight_blue = 14.0
+
 [sub_resource type="Resource" id="Scene3"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyOrc"), SubResource("EnemyOrc"), SubResource("EnemyOrc"), SubResource("RangedSlingerMid")])
 enemy = SubResource("EnemyOrc")
 kill_count = 6
 

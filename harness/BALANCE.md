@@ -92,6 +92,7 @@ bonus(主轴) = base_value(主轴, ilvl) × ENHANCE_PER_LEVEL × enhance_level  
 - 战士裸基础:`attack6 / max_hp120 / attack_speed1 / crit_mult2`,余 0(`starting_roster.json`)。开局白武+白甲(ilvl1),空饰品。
 - 掉落:`material_per_decompose=1`、`decompose_threshold="white"`、稀有度条数 `white0/blue1-2/gold3-4`。
 - **强化(05,planned in BALANCE-CHANGE-02,走配置勿硬编码):** `ENHANCE_PER_LEVEL=0.10`(每级 +10% 主轴基底,FLAT 线性)、`ENHANCE_CAP=10`(满级 = 主轴翻倍)、成本 `cost(L→L+1)=ENH_COST_BASE(1)+ENH_COST_STEP(1)×L`(满件累计 55,花 `slot|white`)。三槽同公式,仅主轴不同。
+- **团战门控(08,planned in BALANCE-CHANGE-03,走配置勿硬编码):** `CombatTuning.melee_gate_capacity = 2`(`G`)——同一时刻最多 2 名最前存活近战可出手,其余近战排队补位(车轮);**远程不受门控**(隔位恒可出手)。团战唯一运行时旋钮,缩放全部近战峰值威胁。一波规模(普通场景 2–4 随深度递增、Boss 维持 1)、近/远配比(远程少数派,`远程数≈floor(WAVE_SIZE/3)`、v1 上限 1)、远程权重(`attack≈0.6×同档近战`、`hp≈0.6×同档近战` → 漏血而非主伤)= per-feature authoring 指南,落 08 的 .tres,不在此硬定。
 
 **平衡不变量(必须恒成立):**
 - **i1 装备无损还原**:脱下装备 `StatsComponent` 完全回到裸基础(modifier by-source 移除)——逆推/换装不漂。
@@ -101,6 +102,7 @@ bonus(主轴) = base_value(主轴, ilvl) × ENHANCE_PER_LEVEL × enhance_level  
 - **i5 `max_hp` 变动时 `current_hp` 夹 [0,new_max]**:存活加差额、死亡不复活(`progression._revive_party` 负责回满,装备增量不偷偷治疗)。
 - **i6 ilvl 单调闸门**:更深内容给更高 ilvl → 解锁更高 Tier 上限(变强够到下一个怪 = 支柱 2 的数值载体)。**由 BALANCE-CHANGE-01 设 item_level 阶梯恢复**(关1 ilvl 1→10、关2 14→30)。
 - **i7 强化确定性纯增益**(05,planned in BALANCE-CHANGE-02):强化 = **确定 +1、无失败、无掉级、无碎裂**(GD 红线,守支柱 3 非赌场);加成 **FLAT、仅作用本件主轴、对等级线性**(weapon 不强化 attack_speed → DPS 不双轴放大,守 i4);经 source=self 通道注入 → 守 i1/i2;**不解锁 Tier**(i6 闸门之上的加性增益);封顶 +10。
+- **i8 团战威胁纯加性**(08,planned in BALANCE-CHANGE-03):一波多敌的总威胁 = **各敌个体 DPS 之和**(近战那部分受门控 `G` 截断同时活跃数),**严禁任何"敌数越多每个越强"的乘性放大**(无数量狂暴/团队士气类乘子)。门控只**减少**同时活跃近战数、**绝不增伤**;近战超过 `G` 的部分转为**时间压力**(拖长清场 → 远程多漏几下),**不是爆发压力**。守 i4 不超线性 + 支柱 1 可读(瞥一眼看懂"在打一群")。
 
 ## 6. 已知失衡与债 / Known imbalances & debt
 > 逆推中发现,按杠杆从高到低排;债-1/2/3 是 04 F-NUM 的核心标的。
@@ -109,5 +111,5 @@ bonus(主轴) = base_value(主轴, ilvl) × ENHANCE_PER_LEVEL × enhance_level  
 - **债-3 · 阶选择均匀、忽略 weight + 不偏 ilvl 深度。** `_roll_affixes` 用 `randi()%合格阶数` 等概率挑阶,`weight` 字段(全 1.0)完全没用上;高 ilvl 时 T10(如 max_hp 1-5)与 T1(115-140)**等概率**,值方差极大、无「越深越易出强阶」拉力。GD/用户表态 v1 **接受均匀**(守可读、当惊喜方差);ilvl 阶梯拉开后此方差会更明显,playtest 若刺眼再改 weight/ilvl 偏置(后续可选,非 v1)。
 - **✅ 债(沉淀口已补,planned in BALANCE-CHANGE-02)· 材料曾零沉淀口。** v1 材料单向累积、无消耗。**05 强化补上首个 `slot|white` 沉淀口**(单步 `1+L`、满件 55)。经济校验:产出仍 > 消耗(净累积、无荒、偏富余);若 playtest 显材料过剩 → 优先陡化 `ENH_COST_STEP` 而非降产出。
 - **债-4 · kind 权重死值。** `weight_{gold,material,equipment}` 从不参与 roll(掉落恒装备),金币货币未接线。待 F-KIND(Producer)定 v1 是否纳入;纳入则需补 kind roll + 金币沉淀口。
-- **债-5 · 狂暴/回血数值未经实战检验。** 快速击杀下 `enrage_threshold=25s` 极少触发;`hp_regen` 词缀存在但无敌人能拖到回血显著。这些常量是纯占位,待有「耐久战」内容后再校准。
+- **债-5 · 狂暴/回血数值未经实战检验。** 快速击杀下 `enrage_threshold=25s` 极少触发;`hp_regen` 词缀存在但无敌人能拖到回血显著。这些常量是纯占位,待有「耐久战」内容后再校准。**08 团战清场更慢(单波 4–6s,仍 < 25s),首次给狂暴常量实战检验机会**——记为团战 playtest 观察点(BALANCE-CHANGE-03 §5/§7),若拖长波意外触发再校准,本期不动其值。
 - **债-6 · 词缀池薄/金装撞满。** weapon 词缀候选恰好 4 个,金装 [3,4] 条会几乎抽空全池 → 金武缺乏 build 差异。v1 可接受(守 fantasy:先有掉落),池扩充属后续。

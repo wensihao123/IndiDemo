@@ -17,6 +17,10 @@ var stage_clear_countdown_sec := 5.0
 ## 固定逻辑步长(秒);累加器按此步进,使战斗帧率无关(不变量 #3)。
 var tick_seconds := 0.1
 
+## 〔08 团战 §3a〕近战门控容量 G:同一 tick 至多前 G 名存活近战可够到战士出手(余者排队补位)。
+## 远程隔位不占此名额。守 i8 纯加性(严禁「敌越多每个越强」的乘性放大);占位 2(BALANCE-CHANGE-03 §3a)。
+var melee_gate_capacity := 2
+
 
 ## 狂暴伤害倍率:未狂暴 = 1.0;狂暴后随超阈值时长线性陡增(承 combat_director._enrage_mult)。
 func enrage_mult(fight_time: float, enraged: bool) -> float:

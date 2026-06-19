@@ -68,6 +68,22 @@ func has_living_member() -> bool:
 	return _has_living(players)
 
 
+## 〔08 团战 §3c〕前 G 名存活近战门控集合:按排位序(enemies 数组序)取存活近战前 G 名。
+## 远程不入此集合(隔位恒可出手,不占门控名额);G = tuning.melee_gate_capacity。
+func _front_melee_attackers() -> Array[Entity]:
+	var cap: int = tuning.melee_gate_capacity
+	var out: Array[Entity] = []
+	for e in enemies:
+		if e == null or not e.is_alive():
+			continue
+		if e.position_class == EnemyDef.PositionClass.RANGED:
+			continue
+		out.append(e)
+		if out.size() >= cap:
+			break
+	return out
+
+
 ## 固定步长累加器:可变帧 delta 切成等长逻辑步(承 :115-125;倒计时委托 Progression)。
 func _process(delta: float) -> void:
 	if not running:
@@ -117,15 +133,23 @@ func tick_combat() -> void:
 			if not target.is_alive():
 				_handle_enemy_defeated(target)
 				if _battle_restarted:
-					return        # 承 director:击杀触发推进/补刷后即结束本 tick,新生敌不反击
+					return        # 信号处理器(测试/View)在敌死回调里重开战 → 本 tick 即止,新生敌不反击
 		if not _has_living(enemies):
 			break
+	# 〔08 团战 #12〕一波清空才推进/刷下一波(per-wave);未清空则继续本 tick 敌方反击。
+	# _battle_restarted 已真 = 信号处理器(测试/View)已重开战 → 不重复推进。
 	if not _has_living(enemies):
+		if progression != null and not _battle_restarted:
+			progression.advance_after_wave()
 		return
 	# 敌进攻:按攻速累计出手,打最前存活成员(闪避→护甲减伤,狂暴加成)。
+	# 〔08 团战 §3c〕近战门控:仅「前 G 名存活近战」可出手(余者排队补位,不蓄力);远程隔位恒可出手。
 	var mult: float = tuning.enrage_mult(battle_time, enraged)
+	var active_melee := _front_melee_attackers()
 	for e in enemies:
 		if e == null or not e.is_alive():
+			continue
+		if e.position_class != EnemyDef.PositionClass.RANGED and not active_melee.has(e):
 			continue
 		e.skill.accumulate(e.stats.get_final(GameKeys.STAT_ATTACK_SPEED), tuning.tick_seconds)
 		for _s in e.skill.pending_swings():
@@ -143,13 +167,14 @@ func tick_combat() -> void:
 			progression.retreat_after_wipe()
 
 
-## 敌死结算:发 enemy_defeated → 掉落(5e)→ 推进(5f)。顺序须等价 director(同一次敌死触发掉落+推进)。
+## 敌死结算:发 enemy_defeated → 掉落(5e)→ per-enemy 计杀(08 团战 #12)。
+## 〔REFACTOR-04 §3b〕不再在此重刷:推进/刷下一波延到 tick 检测「波清空」时调 advance_after_wave。
 func _handle_enemy_defeated(entity: Entity) -> void:
 	var def: EnemyDef = entity.source_enemy_def
 	enemy_defeated.emit(def)
 	_drop_loot(def)
 	if progression != null:
-		progression.advance_after_kill()
+		progression.register_kill()
 
 
 ## 掉落钩子:敌死 → PoE 流水线产 ItemInstance(ilvl=def.item_level)→ LootIntake 路由进 PlayerState。

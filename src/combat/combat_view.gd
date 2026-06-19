@@ -25,6 +25,17 @@ const ENEMY_CENTER_X := 635.0
 const ENEMY_SPRITE_SCALE := 0.71
 const ENEMY_DISPLAY_MIN_H := 70.0
 const ENEMY_DISPLAY_MAX_H := 125.0
+# 〔08 团战〕一波多敌占位渲染:N==1 维持单敌大图;N>1 横排缩小,前排(lane 小)靠左(近战士)。
+# 防呆:本值 = 同屏可渲染敌数上限,与 BALANCE WAVE_SIZE 上限(关1=4)耦合。num-smith 复算关2 若 WAVE_SIZE>4,
+# 须同步抬本值,否则 _update_enemy 静默截断尾部敌人(解算照打 → 玩家被看不见的敌人扣血,REVIEW §3)。
+const MAX_WAVE_SLOTS := 4
+const WAVE_SLOT_STEP := 72.0      # 多敌时相邻槽中心间距
+const WAVE_SLOT_HP_W := 56.0      # 多敌时单只血条宽
+const WAVE_SLOT_MAX_H := 78.0     # 多敌时贴图显示高上限
+const WAVE_SLOT_MIN_H := 50.0
+const SLOT_MELEE_COLOR := Color(0.8, 0.25, 0.25)
+const SLOT_RANGED_COLOR := Color(0.4, 0.55, 0.85)  # 远程占位偏蓝,一眼区分近/远
+const SLOT_DEAD_COLOR := Color(0.45, 0.45, 0.45)
 # 掉落 FX 贴图:固定视觉常量,按 EI 接线契约由代码引用(INTEGRATION-STEPS F1 P2-d)。
 # fx_light_pillar 为纯白底实顶渐隐,运行时 modulate 染稀有度色;sparkle 叠在光柱根部。
 const FX_LIGHT_PILLAR := preload("res://assets/sprites/fx/fx_light_pillar.png")
@@ -39,6 +50,11 @@ var _party_name: Array[Label] = []
 var _party_hp_bg: Array[ColorRect] = []
 var _party_hp_bar: Array[ColorRect] = []
 var _party_hp_text: Array[Label] = []
+# 〔08 团战〕一波多敌渲染槽池;slot 0 复用下面单敌节点,1..MAX_WAVE_SLOTS-1 为追加槽,按 arena.enemies 逐只画。
+var _slot_sprite: Array[TextureRect] = []
+var _slot_panel: Array[ColorRect] = []
+var _slot_hp_bg: Array[ColorRect] = []
+var _slot_hp_bar: Array[ColorRect] = []
 
 @onready var _progress_label := Label.new()
 @onready var _log_label := Label.new()
@@ -97,39 +113,80 @@ func _process(_delta: float) -> void:
 # --- 渲染 ---------------------------------------------------------------
 
 func _update_enemy() -> void:
-	var living: Entity = _living_enemy()
-	var alive: bool = living != null
-	_enemy_name.visible = alive
-	_enemy_hp_bar_bg.visible = alive
-	_enemy_hp_bar.visible = alive
-	if not alive:
-		_enemy_sprite.visible = false
-		_enemy_panel.visible = false
+	# 〔08 团战〕按 arena.enemies 逐只渲染整波(前排死也留场=灰显,呈现车轮/隔位);名字取集火最前存活。
+	var ents: Array = _arena.enemies
+	var n: int = ents.size()
+	var front: Entity = _living_enemy()
+	_enemy_name.visible = front != null
+	if front == null:
+		for i in MAX_WAVE_SLOTS:
+			_hide_slot(i)
 		return
-	var def: EnemyDef = _prog.current_enemy_def()
+	_enemy_name.text = front.source_enemy_def.display_name if front.source_enemy_def != null else "敌人"
+	for i in MAX_WAVE_SLOTS:
+		var ent: Entity = ents[i] if i < n else null
+		if ent != null:
+			_render_slot(i, ent, n)
+		else:
+			_hide_slot(i)
+
+
+## 渲染第 i 个敌槽:按贴图原生比例缩放到地平线;N==1 居中大图、N>1 横排缩小;死者灰显;远程偏蓝。
+func _render_slot(i: int, ent: Entity, n: int) -> void:
+	var def: EnemyDef = ent.source_enemy_def
 	var tex: Texture2D = def.sprite if def != null else null
-	# 有贴图 → 显示正式敌人(脚底落地平线、按显示高缩放);无贴图 → 回退到占位色块。
-	_enemy_sprite.visible = tex != null
-	_enemy_panel.visible = tex == null
-	if tex != null and _enemy_sprite.texture != tex:
-		_layout_enemy_sprite(tex)
-	var hp: float = living.current_hp
-	var maxhp: float = living.max_hp()
-	if def != null:
-		_enemy_name.text = def.display_name
-	var frac := clampf(hp / maxhp, 0.0, 1.0) if maxhp > 0.0 else 0.0
-	_enemy_hp_bar.size = Vector2(120.0 * frac, 8.0)
+	var dead: bool = not ent.is_alive()
+	var ranged: bool = ent.position_class == EnemyDef.PositionClass.RANGED
+	var single: bool = n <= 1
+	# 槽位中心 x:单敌居中;多敌横排,以 ENEMY_CENTER_X 为簇心、前排(i 小)靠左。
+	var cx: float = ENEMY_CENTER_X
+	if not single:
+		cx = ENEMY_CENTER_X - float(n - 1) * WAVE_SLOT_STEP * 0.5 + float(i) * WAVE_SLOT_STEP
+	var sprite: TextureRect = _slot_sprite[i]
+	var panel: ColorRect = _slot_panel[i]
+	if tex != null:
+		var native_w := float(tex.get_width())
+		var native_h := float(tex.get_height())
+		var cap_h: float = ENEMY_DISPLAY_MAX_H if single else WAVE_SLOT_MAX_H
+		var min_h: float = ENEMY_DISPLAY_MIN_H if single else WAVE_SLOT_MIN_H
+		var disp_h := clampf(native_h * ENEMY_SPRITE_SCALE, min_h, cap_h)
+		var disp_w := disp_h * (native_w / native_h) if native_h > 0.0 else disp_h
+		sprite.texture = tex
+		sprite.size = Vector2(disp_w, disp_h)
+		sprite.position = Vector2(cx - disp_w * 0.5, ENEMY_GROUND_Y - disp_h)
+		sprite.modulate = Color(0.5, 0.5, 0.5, 0.55) if dead else Color.WHITE
+		sprite.visible = true
+		panel.visible = false
+	else:
+		var pw: float = 70.0 if single else 44.0
+		var ph: float = 90.0 if single else 64.0
+		var base := SLOT_RANGED_COLOR if ranged else SLOT_MELEE_COLOR
+		panel.color = base.darkened(0.5) if dead else base
+		panel.size = Vector2(pw, ph)
+		panel.position = Vector2(cx - pw * 0.5, ENEMY_GROUND_Y - ph)
+		panel.visible = true
+		sprite.visible = false
+	var hp_w: float = 120.0 if single else WAVE_SLOT_HP_W
+	var bx := cx - hp_w * 0.5
+	var by := ENEMY_GROUND_Y + 6.0
+	var bg: ColorRect = _slot_hp_bg[i]
+	var bar: ColorRect = _slot_hp_bar[i]
+	bg.size = Vector2(hp_w, 8.0)
+	bg.position = Vector2(bx, by)
+	bg.visible = true
+	var maxhp := ent.max_hp()
+	var frac := clampf(ent.current_hp / maxhp, 0.0, 1.0) if maxhp > 0.0 else 0.0
+	bar.size = Vector2(hp_w * frac, 8.0)
+	bar.position = Vector2(bx, by)
+	bar.color = SLOT_DEAD_COLOR if dead else (SLOT_RANGED_COLOR if ranged else SLOT_MELEE_COLOR)
+	bar.visible = true
 
 
-## 按贴图原生比例缩放到目标显示高,并把脚底对齐地平线、水平居中于敌人锚点。
-func _layout_enemy_sprite(tex: Texture2D) -> void:
-	var native_w := float(tex.get_width())
-	var native_h := float(tex.get_height())
-	var disp_h := clampf(native_h * ENEMY_SPRITE_SCALE, ENEMY_DISPLAY_MIN_H, ENEMY_DISPLAY_MAX_H)
-	var disp_w := disp_h * (native_w / native_h) if native_h > 0.0 else disp_h
-	_enemy_sprite.texture = tex
-	_enemy_sprite.size = Vector2(disp_w, disp_h)
-	_enemy_sprite.position = Vector2(ENEMY_CENTER_X - disp_w * 0.5, ENEMY_GROUND_Y - disp_h)
+func _hide_slot(i: int) -> void:
+	_slot_sprite[i].visible = false
+	_slot_panel[i].visible = false
+	_slot_hp_bg[i].visible = false
+	_slot_hp_bar[i].visible = false
 
 
 # 第一个存活敌实体(血量从战斗壳读,名字/贴图仍走 def）。
@@ -434,6 +491,36 @@ func _build_ui() -> void:
 	_enemy_hp_bar.position = Vector2(575, 186)
 	_enemy_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_enemy_hp_bar)
+
+	# 〔08 团战〕slot 0 = 上面单敌节点;再追加 MAX_WAVE_SLOTS-1 套(贴图/占位块/血条),供多敌波横排渲染。
+	_slot_sprite = [_enemy_sprite]
+	_slot_panel = [_enemy_panel]
+	_slot_hp_bg = [_enemy_hp_bar_bg]
+	_slot_hp_bar = [_enemy_hp_bar]
+	for _i in range(1, MAX_WAVE_SLOTS):
+		var sp := TextureRect.new()
+		sp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sp.stretch_mode = TextureRect.STRETCH_SCALE
+		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sp.visible = false
+		add_child(sp)
+		_slot_sprite.append(sp)
+		var pn := ColorRect.new()
+		pn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pn.visible = false
+		add_child(pn)
+		_slot_panel.append(pn)
+		var bg := ColorRect.new()
+		bg.color = Color(0.15, 0.15, 0.15)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bg.visible = false
+		add_child(bg)
+		_slot_hp_bg.append(bg)
+		var bar := ColorRect.new()
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.visible = false
+		add_child(bar)
+		_slot_hp_bar.append(bar)
 
 	_countdown_label.position = Vector2(330, 110)
 	_countdown_label.add_theme_font_size_override("font_size", 16)

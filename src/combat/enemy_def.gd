@@ -3,7 +3,13 @@ class_name EnemyDef
 ## 一种怪的数值与掉落配置。数值走 Resource、不硬编码进逻辑(PLAN D3 / FEATURE-DESIGN F1)。
 ## 普通怪与关底 Boss 共用此结构;Boss 只是数值更高的 EnemyDef。
 
+## 站位类别(08 团战 REFACTOR-04 §3a):MELEE 近战受门控(够得着才打、排队补位),
+## RANGED 远程不受门控(隔位恒可输出战士)。默认 MELEE → 旧 .tres 缺该键即近战,向后兼容。
+enum PositionClass { MELEE, RANGED }
+
 @export var display_name: String = "怪物"
+## 近战 / 远程站位(默认 MELEE)。门控判定在 CombatArena 据此读(REFACTOR-04 §3c)。
+@export var position_class: PositionClass = PositionClass.MELEE
 @export var max_hp: float = 10.0
 @export var attack: float = 1.0
 ## 每秒出手次数(PLAN D2/D6:占位 1.0,走配置不硬编码;运行时出手进度/狂暴态在 CombatDirector,不写回 Resource)。

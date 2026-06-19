@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
-## PLAN 步 5c 验证:AICombatComponent 选最前存活 + 占位射程。
+## PLAN 步 5c 验证:AICombatComponent 选最前存活(集火)。
+## 〔08 团战〕in_range 占位已退役 → 门控判定上移到 CombatArena,其测试见 combat_arena_test.gd。
 
 func _enemy(hp: float) -> Entity:
 	var def := EnemyDef.new()
@@ -27,7 +28,3 @@ func test_all_dead_returns_null() -> void:
 	var d2 := _enemy(10.0); d2.take_damage(999.0)
 	var targets: Array = [d1, d2]
 	assert_object(ai.select_target(null, targets)).is_null()
-
-func test_in_range_is_placeholder_true() -> void:
-	var ai := AICombatComponent.new()
-	assert_bool(ai.in_range(null, _enemy(10.0))).is_true()

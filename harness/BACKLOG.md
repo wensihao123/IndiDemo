@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-19
+updated: 2026-06-20 (08 团战收口移入 Done · 06 难度收口升 Now · v1 仅余 06)
 ---
 
 
@@ -36,28 +36,26 @@ updated: 2026-06-19
   事实源 `ARCHITECTURE.md` + 人类导读 `ARCHITECTURE-GUIDE.md` 已对齐落地代码。
 - ✅ **07-save-load(最简版)实质已交付,并入 `00`** — 最简 save/load(队伍/背包/进度)由 foundation `SaveSystem` 落地,
   §F round-trip 人验通过(通关→关程序→重开续到下一关、不重打 Boss)。**故不再单列 07 新功能**;多档/云存档原本就在 v1 外。
+- ✅ **04-loot-equipment(收窄为「表层 + 数值定稿」)**(2026-06-19)— 后端(掉落 roll / `ItemInstance` / 词缀分阶 / 自动填空 / 自动分解 / 装备组件)随 `00` 落地;04 交付剩余两件:
+  ① 悬浮窗**只读双栏查阅面板**(背包/当前装备 + 8 维属性明细 + 自动填空绿闪 = 支柱 2 "变强看得见");
+  ② **数值定稿**——`LootGenerator.pick_weighted` 读 `EnemyDef.rarity_weight_*`(金/白不再等概率,守支柱 3)+ 8 个 `EnemyDef.item_level` 阶梯(BALANCE-CHANGE-01)。
+  gdUnit4 123/123 绿、Reviewer APPROVE WITH NITS(2 should-fix 已闭)、人验 6 条通过。旧设计/计划/勘探三件标 superseded(假设旧 director)。
+- ✅ **05-town-gear-upgrade(城镇:手动换装 + 对比面板 + 装备强化)**(2026-06-19)— 支柱 2 主动构筑高光落点。进城**暂停挂机** →
+  1 战士 3 槽**手动换装** + **对比面板**(逐轴差值绿↑红↓)+ **确定性装备强化**(+1、三槽通吃、花 `slot|white` 材料、数值随级线性、上限 +10)→ 出城**不回血**且改动生效。
+  六棒齐(设计→架构→数值→计划→实现→接线):新增 `enhance.json`/`EnhanceConfigDef` + `ItemInstance.enhance_level` + `PlayerState` 换装/强化元操作 +
+  `Game.pause_run/resume_run` + `TownView`(REFACTOR-03 + BALANCE-CHANGE-02,守 i1/i4/i5/i7 + 不变量 #10/#11)。gdUnit4 **145/145 绿、0 orphan**;EI 接线人验通过。
+  **界面为占位程序美术;UI/juice 经用户拍板推迟到 v1 功能全完成后统一处理(见决策日志 2026-06-19)。**
 
 ## Now(committed,当前在做 —— 一次只做一件)
-1. **04-loot-equipment(已收窄为「表层 + 数值定稿」)** — 后端(掉落 roll / `ItemInstance` / 词缀分阶 / 自动填空槽 /
-   自动分解 / 装备组件)已随 `00` 落地并持久化。04 收窄为两件:
-   - **① 掉装→变强「看得见」**:悬浮窗里一个**只读掉落包 / 背包查阅面板**(查阅掉了什么、当前穿戴),
-     + 让玩家感到"变强了"的反馈(属性/战力可见)。这是支柱 2 在 v1 的高光落点。
-   - **② 数值定稿**:词缀数值 / 掉落概率 / 稀有度梯度 / slot·rarity 选择规则——现为占位(随机),需定稿。
-   - **旧 `FEATURE-DESIGN.md` / `PLAN.md` / `CONTEXT-FINDINGS.md` 标 superseded**(它们假设旧 director 结构;后端已由 `00` 以新架构实现)。
-   - 下一步:`/role-game-designer 04-loot-equipment` 重新收敛——只收"表层 UI + 数值定稿"的剩余线头,**不重做已落地后端**(守 hard-NO「勿过度/勿重复」)。
-
-## Next(排队中,按优先级)
-2. **05-town-gear-upgrade** — 城镇最简版:**手动换装 + 对比面板(逐项差值绿↑红↓)** + 1 个最简打造/强化(材料 +1 武器)。
-   - 持久层 roster/背包/材料已由 `00` 就位;主动构筑的高光时刻集中在回城。
-   - 不含:招募、技能升级、其它打造线。
-   - **〔触发复审〕** 05 需在战斗外读写 roster/模板 → `DataRegistry` 由单消费者变多消费者,届时复审其座位(升 autoload vs 注入,见 ARCHITECTURE.md §6)。
-3. **08-team-combat(多敌同屏 —— 自 Later 提升进 v1,用户 2026-06-19 拍板)** — 敌方**一波多敌同时打**(车轮战→团战)。
+1. **08-team-combat(多敌同屏 —— 自 Later 提升进 v1,用户 2026-06-19 拍板)** — 敌方**一波多敌同时打**(车轮战→团战)。
    - lane 多实体引擎已在地基内(`CombatArena.enemies` 已是数组、`Entity` 通用)→ 余下主要是**设计 + 配置**:
      Game Designer 定**目标选择规则**(集火 / 分散 / AoE;现 `AICombatComponent` 占位"打最前存活")+ 配多敌关卡(`SceneConfig` 多敌)+ tuning。
    - 玩家侧仍 4 格(v1 填 1 战士);"清场/一轮"按整波重定义。掉落/团灭回退/解锁/倒计时只认事件,基本不动。
-   - 下一步:`/role-game-designer 08-team-combat` 定目标选择规则与波次。
-4. **06-difficulty-progression** — 闭环收口:变强后能打过一个更硬的怪 / 更难一波。
-   - 自然排末位(依赖 04 表层 + 05 换装 + 08 团战 到位才好验"刷→调→再挑战"闭环)。
+   - **下一步:`/role-game-designer 08-team-combat` 定目标选择规则与波次。**
+
+## Next(排队中,按优先级)
+2. **06-difficulty-progression** — 闭环收口:变强后能打过一个更硬的怪 / 更难一波。
+   - 自然排末位(依赖 04 表层 + 05 换装 + 08 团战 到位才好验"刷→调→再挑战"闭环)。**04+05 已 done,余 08 到位即可开。**
    - 不含:难度曲线精调、多区域。
 
 ## Later / v2(明确推后,已停车未杀)
@@ -68,8 +66,11 @@ updated: 2026-06-19
 - 多探索区域 / 更多 Boss
 - 离线结算(完全关闭程序后的收益)—— 现有最简存档是其前置,已就位。
 - 套装、宝石、复杂词条池(超出已扩 6 维的)、词条重铸
+- **全局 UI / juice 统一一轮(用户拍板 2026-06-19)** —— 各功能(城镇换装/对比/强化、战斗、掉落面板)现为**占位程序美术**(裸 Button/Label/ColorRect),
+  能验收功能即可。界面皮(`NinePatchRect` + 统一 `Theme` + 图标排版)与反馈 juice(换装绿闪 / 强化特效 / 音 / 对比差值显形)**留到 v1 功能全做完后开 Art Spec 统一做一轮**,不逐功能上皮。
+  Why: 垂直切片 + solo,逻辑对了再统一上皮避免返工、避免每功能停下打磨拖慢闭环。涵盖 05 城镇 UI(FEATURE-DESIGN §4)、04 掉落面板、下条 02 战斗演出。
 - **02 横版战斗演出打磨** —— 怪精灵、攻击/受击动画、伤害飘字、掉落迸出等全套表现(`AnimationComponent` 挂点已在地基内,差正式素材)。
-  符号/轻演出版验证乐趣后再上;属打磨而非核心验证,正式美术阶段或单独立项再做。
+  符号/轻演出版验证乐趣后再上;属打磨而非核心验证,并入上条「全局 UI/juice 统一一轮」或正式美术阶段再做。
 - 透明窗 / 点击穿透 / 多显示器精细适配
 - **全局热键(失焦时也响应 F1/F2)** —— 需 OS 级注册或插件(撞 hard-NO);本期点 handle / 收起按钮已够用。
 - Linux / Mac 平台
@@ -110,3 +111,12 @@ updated: 2026-06-19
   Why: 03 本体 2026-06-18 已收口(done);REFACTOR-01 把 6 维公式搬入 `SkillComponent`、**公式断言值作为重构回归锚**(值不变),
   仅承载结构由单敌 director 改为 lane 多实体 + 组件。与 07 不同:07 是"未单独实现、后端被吸收";03 是"先独立做完、成果再被承接"。
   03 目录留作设计/历史档,不再单独推进。来源:`03-combat-formula-ext/HANDOFF.md` + REFACTOR-01 §4/§5。
+- 2026-06-19 — **04-loot-equipment 收口移入 Done。** Verdict: done。Why: 表层只读双栏面板 + 数值定稿(rarity 加权 + item_level 阶梯)全落地,
+  gdUnit4 123/123、Reviewer APPROVE(should-fix 已闭)、人验 6 条通过。BACKLOG "Now" 此前未及时刷新(滞留 04),本次校正。
+- 2026-06-19 — **05-town-gear-upgrade 收口移入 Done。** Verdict: done。Why: 手动换装 + 对比面板 + 确定性强化全链路落地,六棒齐,
+  gdUnit4 145/145 绿、EI 接线人验通过。后端持久层(roster/背包/材料)复用 `00`,新增强化经同一 `to_modifiers(source=self)` 缝(守不变量)。
+- 2026-06-19 — **全局 UI/juice 推迟到 v1 功能全完成后统一做一轮(用户拍板)。** Verdict: Later(统一一轮,非逐功能)。
+  Why: 各功能现用占位程序美术跑通功能即可;垂直切片 + solo,逻辑对了再统一上皮可避免返工、避免每功能停下打磨拖慢核心闭环验证。
+  涵盖 05 城镇 UI、04 掉落面板、02 战斗演出;待功能闭环完成后开 Art Spec。来源:用户(05 EI 验收后拍板)。
+- 2026-06-19 — **08-team-combat 升为当前 Now(04+05 done 后顺位)。** Verdict: now。Why: v1 余下功能仅 08(团战)+ 06(难度收口);
+  08 排 06 之前(06 依赖团战到位才好验闭环)。下一步 `/role-game-designer 08-team-combat`。

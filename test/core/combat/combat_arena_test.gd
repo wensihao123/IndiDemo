@@ -291,3 +291,63 @@ func test_accumulator_carries_remainder_across_frames() -> void:
 	assert_int(kills[0]).is_equal(0)
 	a._process(0.05)                                 # 累计 0.1 → 恰一步
 	assert_int(kills[0]).is_equal(1)
+
+# ── 〔08 团战 §3c〕近战门控 + 远程隔位 ──────────────────────────────────────
+# 玩家 atk0 → 不杀敌(敌不死、不推进),aspd1×tick1 → 每敌每 tick 恰一击,纯观测「谁够得着」。
+
+func _foe(hp: float, atk: float, pc: EnemyDef.PositionClass, rank: int) -> Entity:
+	var def := EnemyDef.new()
+	def.max_hp = hp
+	def.attack = atk
+	def.attack_speed = 1.0
+	def.drop_chance = 0.0
+	def.position_class = pc
+	return auto_free(Entity.from_enemy_def(def, rank))
+
+func test_melee_gate_limits_active_attackers_to_capacity() -> void:
+	var a := _arena(1.0)
+	a.tuning.melee_gate_capacity = 2
+	a.players = _solo(_player(1000.0, 0.0))
+	var e0 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 0)
+	var e1 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 1)
+	var e2 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 2)
+	a.start_battle([e0, e1, e2] as Array[Entity])
+	a.tick_combat()
+	# 前 2 名近战各出手 10,第 3 名排队 0 伤 → 玩家共失 20。
+	assert_float(a.players[0].current_hp).is_equal(980.0)
+
+func test_melee_gate_promotes_next_when_front_dies() -> void:
+	var a := _arena(1.0)
+	a.tuning.melee_gate_capacity = 2
+	a.players = _solo(_player(1000.0, 0.0))
+	var e0 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 0)
+	var e1 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 1)
+	var e2 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 2)
+	a.start_battle([e0, e1, e2] as Array[Entity])
+	e0.take_damage(999.0)                            # 前排死 → 存活近战前 2 = e1,e2
+	a.tick_combat()
+	assert_float(a.players[0].current_hp).is_equal(980.0)  # e1+e2 各 10,e0 死不出手
+
+func test_ranged_attacks_regardless_of_gate() -> void:
+	var a := _arena(1.0)
+	a.tuning.melee_gate_capacity = 2
+	a.players = _solo(_player(1000.0, 0.0))
+	var m0 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 0)
+	var m1 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 1)
+	var m2 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 2)
+	var r3 := _foe(100.0, 10.0, EnemyDef.PositionClass.RANGED, 3)
+	a.start_battle([m0, m1, m2, r3] as Array[Entity])
+	a.tick_combat()
+	# 近战门控前 2(m0,m1)=20 + 远程隔位 r3=10;m2 排队 0 → 失 30。
+	assert_float(a.players[0].current_hp).is_equal(970.0)
+
+func test_higher_gate_capacity_lets_more_melee_attack() -> void:
+	var a := _arena(1.0)
+	a.tuning.melee_gate_capacity = 3                 # 覆值验门控容量可调
+	a.players = _solo(_player(1000.0, 0.0))
+	var e0 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 0)
+	var e1 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 1)
+	var e2 := _foe(100.0, 10.0, EnemyDef.PositionClass.MELEE, 2)
+	a.start_battle([e0, e1, e2] as Array[Entity])
+	a.tick_combat()
+	assert_float(a.players[0].current_hp).is_equal(970.0)  # G=3 → 三只全出手 → 失 30

@@ -143,6 +143,28 @@ func test_party_heals_full_after_clearing_a_scene() -> void:
 	assert_int(p.cur_scene).is_equal(1)
 	assert_float(a.players[0].current_hp).is_equal(100.0)
 
+## 〔08 团战 #12 回归〕一波多敌逐个被清,杀掉前排不会触发整波重刷(后排仍在),波清空才推进。
+func test_multi_enemy_wave_clears_one_by_one_without_respawn() -> void:
+	var a := _arena(_warrior(1000.0, 100.0))   # aspd1×tick1 → 每 tick 恰 1 击 → 每 tick 杀 1 只
+	var p := _prog(a)
+	var st := StageConfig.new()
+	st.stage_name = "团战关"
+	var sc := SceneConfig.new()
+	sc.enemy_group = [_enemy(1.0), _enemy(1.0)] as Array[EnemyDef]  # 2 敌一波(各1血/atk0)
+	sc.kill_count = 5                          # 一波(2杀)不够清场 → 同场景重刷
+	st.scenes = [sc] as Array[SceneConfig]
+	st.boss = _enemy(500.0)
+	p.begin_run([st] as Array[StageConfig])
+	assert_int(a.enemies.size()).is_equal(2)   # 整波同屏并存
+	a.tick_combat()                            # 杀前排 1 只
+	assert_int(p.cur_scene).is_equal(0)        # 波未清空 → 未推进
+	assert_bool(a.has_living_enemy()).is_true()# 后排仍活(未被整波重刷冲掉)
+	assert_int(a.enemies.size()).is_equal(2)   # 同一波数组,前死后活(#12:杀一只不重刷)
+	a.tick_combat()                            # 杀后排 → 波清空
+	assert_int(p.cur_scene).is_equal(0)        # 累计2杀 < kill_count5 → 仍本场景
+	assert_int(a.enemies.size()).is_equal(2)   # 波清空才重刷新一波 2 敌
+	assert_bool(a.has_living_enemy()).is_true()
+
 func test_current_enemy_def_returns_boss_at_boss_scene() -> void:
 	var a := _arena(_warrior(1000.0, 100.0))
 	var p := _prog(a)

@@ -15,8 +15,10 @@ var skill: SkillComponent
 var ai: AICombatComponent
 ## 单场运行时血量(绝不写回模板 Character/EnemyDef;start_battle 复位)。
 var current_hp := 0.0
-## 排位占位(lane 几何留数值专章)。
+## 波内排位序(0=最前;由 from_enemy_def 烙;lane 几何留数值专章,此处仅作排位整数,守 #7 无坐标)。
 var lane := 0
+## 站位类别镜像(08 团战 REFACTOR-04 §3c):供 CombatArena 门控判定读「谁是近战/远程」。
+var position_class: EnemyDef.PositionClass = EnemyDef.PositionClass.MELEE
 ## 来源敌模板(供敌死掉落取 item_level;玩家实体为 null)。
 var source_enemy_def: EnemyDef = null
 
@@ -76,9 +78,12 @@ func write_equipment_into(c: Character) -> void:
 
 
 ## 由 EnemyDef 快照建敌实体:数值进 StatsComponent base(无装备),血满。
-static func from_enemy_def(def: EnemyDef) -> Entity:
+## rank = 波内排位序(0=最前;08 团战门控按序取前 G 名近战);烙 position_class 供门控读。
+static func from_enemy_def(def: EnemyDef, rank := 0) -> Entity:
 	var e := Entity.new(Team.ENEMY)
 	e.source_enemy_def = def
+	e.lane = rank
+	e.position_class = def.position_class
 	var s := StatsComponent.new()
 	s.set_base(GameKeys.STAT_MAX_HP, def.max_hp)
 	s.set_base(GameKeys.STAT_ATTACK, def.attack)

@@ -148,10 +148,15 @@ updated: 2026-06-19
 每一拍依次:**缠斗计时/狂暴判定 → 我方回血 → 我方按攻速出手**(`AICombat` 选最前存活敌,`Skill` 按 6 维公式
 结算伤害,发 `hit_dealt`)→ **敌死结算** → 敌方按攻速反击(闪避→护甲→狂暴加成)→ 团灭判定。
 
-敌人一死,`_handle_enemy_defeated` 干三件事(顺序很重要,和旧版逐条等价):
+敌人一死,`_handle_enemy_defeated` 干三件事(顺序很重要,逐项 per-enemy):
 1. 发 `enemy_defeated` 信号(表现层据此演出);
 2. **掉落**:过 `drop_chance` → `LootGenerator` roll 出 `ItemInstance` → `LootIntake` 分流(见 ④)→ 发 `item_dropped`;
-3. `progression.advance_after_kill()` 推进进度游标。
+3. `progression.register_kill()` —— **只**给本场景击杀计数 +1,**不**推进游标、**不**重刷怪。
+
+> 〔08 团战拆分,守不变量 #12〕推进从"逐杀触发"改成"逐波清空触发":单只死只 `register_kill` 计数;
+> 一波全清(`tick_combat` 里检测 `not _has_living(enemies)`,且 `not _battle_restarted` 防双推进)时,
+> Arena 才调 `progression.advance_after_wave()` 据已累计的击杀数判推进/刷下一波。
+> size-1 波(如 Boss)"那一只死 = 整波清空",退化回旧的逐杀触发点,逐位等价。
 
 ### ④ 掉落分流(`LootIntake.handle_drop`)——v1 核心循环的一环
 一件掉落进来,按"填空优先于分解"的规则去向三处之一:
@@ -160,7 +165,7 @@ updated: 2026-06-19
 - **蓝/金装** → 进背包(`BAGGED`)。
 
 ### ⑤ 通关 Boss → 自动存档(`boss_cleared` → `_autosave`)
-打掉关底 Boss 时,`advance_after_kill` 的 Boss 分支:`max_unlocked_stage` +1(永久解锁下一关)→ 发 `boss_cleared`
+打掉关底 Boss 时(Boss 是 size-1 波,死即波清空),`advance_after_wave` 的 Boss 分支:`max_unlocked_stage` +1(永久解锁下一关)→ 发 `boss_cleared`
 → `Game._on_boss_cleared` → `_autosave`。
 存档前先 **`_sync_party_equipment`**:把战斗中自动穿到替身上的装备**写回 `Character`**(否则只 buff 了替身、
 存档里的人没穿,重开就丢)→ 然后 `SaveSystem.save` 落盘。

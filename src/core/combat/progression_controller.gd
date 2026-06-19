@@ -2,7 +2,7 @@ extends RefCounted
 class_name ProgressionController
 ## 跨场推进 FSM(承 combat_director 进度状态机 :242-396,逐条等值):场景游标 0→1→2→Boss、
 ## Boss 永久解锁、团灭回退四条、卡关 GRINDING、通关倒计时/修整。职责正交于 CombatArena:
-## Arena 跑单场并在敌死/团灭时回调本类(advance_after_kill / retreat_after_wipe / process_countdown),
+## Arena 跑单场并在敌死/波清空/团灭时回调本类(register_kill / advance_after_wave / retreat_after_wipe / process_countdown),
 ## 本类据进度配置令 Arena 开下一场(start_battle)。内部 new 敌实体(RefCounted,不留 orphan)。
 
 ## 场景游标:0/1/2 = 三个普通场景,3 = 关底 Boss(承 director BOSS_SCENE)。
@@ -52,34 +52,62 @@ func begin_run(p_stages: Array[StageConfig], stage := 0, scene := 0) -> void:
 	_spawn_current()
 
 
-## 当前游标对应的敌人(Boss 场景取关底 Boss);越界返回 null(承 current_enemy_def :257-265)。
-func current_enemy_def() -> EnemyDef:
+## 当前游标对应的一波敌人定义(08 团战 REFACTOR-04 §3b):
+## Boss 场景 = [关底 Boss](size-1);普通场景 = SceneConfig.wave_defs()(多敌或单敌 fallback);越界 = 空。
+func current_wave_defs() -> Array[EnemyDef]:
 	if cur_stage < 0 or cur_stage >= stages.size():
-		return null
+		return []
 	var st := stages[cur_stage]
 	if cur_scene == BOSS_SCENE:
-		return st.boss
+		if st.boss != null:
+			var arr: Array[EnemyDef] = [st.boss]
+			return arr
+		return []
 	if cur_scene >= 0 and cur_scene < st.scenes.size():
-		return st.scenes[cur_scene].enemy
-	return null
+		return st.scenes[cur_scene].wave_defs()
+	return []
 
 
-## 据当前游标建敌实体并令 Arena 开场;def 为 null(越界/出关)→ 清空敌人(承 _spawn_current :268-269)。
+## 当前游标对应的「波首」敌人(Boss 场景 = Boss);空波返回 null(承 current_enemy_def :257-265)。
+## 〔08 团战后〕薄查询,生产侧已无调用方 —— View 改直读 arena.enemies / Entity.source_enemy_def 逐只画整波;
+## 本函数仅留作 progression 测的 boss-scene 锚(test_current_enemy_def_returns_boss_at_boss_scene),勿误判为热路径。
+func current_enemy_def() -> EnemyDef:
+	var defs := current_wave_defs()
+	if defs.is_empty():
+		return null
+	return defs[0]
+
+
+## 据当前游标建整波敌实体并令 Arena 开场;空波(越界/出关)→ 清空敌人(承 _spawn_current :268-269)。
+## 每只烙波内排位序(index)+ 站位(REFACTOR-04 §3c 供门控读)。
 func _spawn_current() -> void:
 	if arena == null:
 		return
-	var def := current_enemy_def()
-	if def == null:
+	var defs := current_wave_defs()
+	if defs.is_empty():
 		arena.enemies = []
 		return
-	var es: Array[Entity] = [Entity.from_enemy_def(def)]
+	var es: Array[Entity] = []
+	for i in defs.size():
+		es.append(Entity.from_enemy_def(defs[i], i))
 	arena.start_battle(es)
 
 
-## 一次击杀后推进(承 _advance_after_kill :273-314,逐条等值):
-## GRINDING → 先执行入队推进/修整,否则计本场景击杀、满 kill_count 回满再刷;
-## Boss → 永久解锁 + 进 5s 通关倒计时;普通场景 → 计数达标进下一场景(末场景→Boss),过场景回满。
-func advance_after_kill() -> void:
+## 〔08 团战 #12 — per-enemy〕单只敌死时计一次本场景击杀(由 CombatArena._handle_enemy_defeated 调)。
+## 推进/刷下一波延到「波清空」(advance_after_wave),绝不在此重刷,故多敌波可逐个清而非杀一只就整波重刷。
+## GRINDING 有入队宏操作时不计数(交波清空钩子执行入队动作,承旧 advance 的短路语义)。
+func register_kill() -> void:
+	if mode == Mode.GRINDING and _queued != QueuedAction.NONE:
+		return
+	_kills_this_scene += 1
+
+
+## 〔08 团战 #12 — per-wave〕一波清空后推进(承旧 _advance_after_kill :273-314 的推进逻辑,
+## 仅把「计一次击杀」摘到 register_kill;此处只据已累计的 _kills_this_scene 判推进):
+## GRINDING → 执行入队推进/修整,否则满 kill_count 回满再刷;
+## Boss → 永久解锁 + 进通关倒计时;普通场景 → 计数达标进下一场景(末场景→Boss),过场景回满。
+## 由 CombatArena 在 tick 内检测 not _has_living(enemies) 时调(波 size=1 即退化为旧逐杀触发,等价)。
+func advance_after_wave() -> void:
 	if mode == Mode.GRINDING:
 		if _queued == QueuedAction.PUSH:
 			_queued = QueuedAction.NONE
@@ -89,7 +117,6 @@ func advance_after_kill() -> void:
 			_queued = QueuedAction.NONE
 			_enter_rest()
 			return
-		_kills_this_scene += 1
 		var gst := stages[cur_stage]
 		var gneed: int = gst.scenes[cur_scene].kill_count if (cur_scene >= 0 and cur_scene < gst.scenes.size()) else 1
 		if _kills_this_scene >= gneed:
@@ -107,7 +134,6 @@ func advance_after_kill() -> void:
 		mode = Mode.STAGE_CLEAR_COUNTDOWN
 		countdown_remaining = _countdown_len()
 		return
-	_kills_this_scene += 1
 	var st := stages[cur_stage]
 	var need: int = st.scenes[cur_scene].kill_count if cur_scene < st.scenes.size() else 1
 	if _kills_this_scene >= need:
