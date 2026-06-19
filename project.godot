@@ -17,8 +17,8 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-Combat="*res://src/combat/combat_director.gd"
 Player="*res://src/core/meta/player_state.gd"
+Game="*uid://d2cb4835j5tng"
 
 [display]
 

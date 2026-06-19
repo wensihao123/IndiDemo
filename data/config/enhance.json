@@ -1,0 +1,6 @@
+{
+	"per_level": 0.10,
+	"cap": 10,
+	"cost_base": 1,
+	"cost_step": 1
+}

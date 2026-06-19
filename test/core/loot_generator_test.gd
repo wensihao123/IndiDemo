@@ -52,6 +52,26 @@ func test_signature_pick_one_gives_single_axis() -> void:
 	var inst := LootGenerator.new().generate(GameKeys.SLOT_ACCESSORY, 20, GameKeys.RARITY_BLUE, _registry(), _rng(2))
 	assert_int(inst.signature_axes.size()).is_equal(1)  # 饰品 PICK_ONE
 
+func test_pick_weighted_all_zero_returns_zero() -> void:
+	assert_int(LootGenerator.pick_weighted([0, 0, 0], _rng(1))).is_equal(0)
+
+func test_pick_weighted_empty_returns_zero() -> void:
+	assert_int(LootGenerator.pick_weighted([], _rng(1))).is_equal(0)
+
+func test_pick_weighted_single_nonzero_picks_it() -> void:
+	for s in [1, 2, 3, 99]:
+		assert_int(LootGenerator.pick_weighted([0, 1, 0], _rng(s))).is_equal(1)
+
+func test_pick_weighted_distribution_matches_weights() -> void:
+	var rng := _rng(42)
+	var counts := [0, 0, 0]
+	var n := 20000
+	for _i in n:
+		counts[LootGenerator.pick_weighted([80, 18, 2], rng)] += 1
+	assert_float(float(counts[0]) / n).is_equal_approx(0.80, 0.03)
+	assert_float(float(counts[1]) / n).is_equal_approx(0.18, 0.03)
+	assert_float(float(counts[2]) / n).is_equal_approx(0.02, 0.02)
+
 func _tier_ilvl_req(r: DataRegistry, slot: StringName, stat: StringName, tier: int) -> int:
 	for a in r.get_affixes_for_slot(slot):
 		if a.stat == stat:

@@ -2,13 +2,17 @@
 artifact: INTEGRATION-STEPS
 feature: 00-foundation-redesign
 role: Engine Integrator (Godot)
-status: draft
+status: accepted
 updated: 2026-06-19
-inputs: [PLAN-batch3.md §3 步5, PLAN-batch3-s0.md §6, CHANGES-batch3.md Wiring Contract §4, CHANGES-batch3-s1.md, CHANGES-batch3-s0.md Wiring Contract §5, REVIEW-batch3-s0.md, project.godot, scenes/shell/floating_shell.tscn, src/core/game_controller.gd, src/core/meta/player_state.gd, src/combat/combat_view.gd]
-next: 人(在编辑器执行 §A–§F 并回报;§0 已由 Implementer 交付并经 Reviewer 通过)
+inputs: [PLAN-batch3.md §3 步5, PLAN-batch3-s0.md §6, CHANGES-batch3.md Wiring Contract §4, CHANGES-batch3-s1.md, CHANGES-batch3-s0.md Wiring Contract §5, REVIEW-batch3-s0.md, CHANGES-batch3-s2.md(F-SaveBoss), project.godot, scenes/shell/floating_shell.tscn, src/core/game_controller.gd, src/core/meta/player_state.gd, src/combat/combat_view.gd]
+next: —(REFACTOR-01 切换闭环完成;后续为 Producer 回写 scope + 05-town)
 ---
 
 # INTEGRATION-STEPS — 第三批步 5:不可逆切换 + 全回归 + 手动 Play
+
+> ✅ **验收完成(2026-06-19):§A–§E 切换全绿(116/116、0 orphans,EI 复跑)+ §F 手动 Play 经人确认通过**
+> ——基础战斗表现正常 + 存档 round-trip 通过(通关 Boss → 关程序 → 重开**续到下一关、不再重打 Boss**,
+> F-SaveBoss 修复实游戏生效;roster/装备持久化未丢)。**REFACTOR-01 引擎侧切换闭环完成,本 artifact = accepted。**
 
 > 本步是 REFACTOR-01 唯一不可逆的引擎侧切换:切 autoload `Combat`→`PlayerState`/`Game` + 删旧 director +
 > 退役 7 旧测 + 全回归 + 手动 Play。**Godot 4.6.3 / GDScript / Windows。** 一次原子完成(否则 autoload 悬空)。

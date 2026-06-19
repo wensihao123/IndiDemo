@@ -154,14 +154,16 @@ func _handle_enemy_defeated(entity: Entity) -> void:
 
 ## 掉落钩子:敌死 → PoE 流水线产 ItemInstance(ilvl=def.item_level)→ LootIntake 路由进 PlayerState。
 ## 接线未注满(registry/player_state/loot_equipment 任一空)时跳过 → 保 5d 纯解算可独立测。
-## slot/rarity 为占位规则(随机选,留数值专章);本层只验「敌死→产物→入 PlayerState」。
+## slot 为占位规则(随机选,留数值专章);rarity 按 EnemyDef 的 rarity_weight_* 加权(白重、Boss 偏蓝金)。
 func _drop_loot(def: EnemyDef) -> void:
 	if def == null or registry == null or player_state == null or loot_equipment == null:
 		return
 	if rng.randf() >= def.drop_chance:
 		return
 	var slot: StringName = GameKeys.SLOTS[rng.randi() % GameKeys.SLOTS.size()]
-	var rarity: StringName = GameKeys.RARITIES[rng.randi() % GameKeys.RARITIES.size()]
+	var rarity_idx := LootGenerator.pick_weighted(
+		[def.rarity_weight_white, def.rarity_weight_blue, def.rarity_weight_gold], rng)
+	var rarity: StringName = GameKeys.RARITIES[rarity_idx]
 	var inst := _loot_gen.generate(slot, def.item_level, rarity, registry, rng)
 	var dest := LootIntake.handle_drop(inst, loot_equipment, player_state, registry.get_loot_table())
 	item_dropped.emit(inst, dest)

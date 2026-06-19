@@ -58,6 +58,11 @@ func _boot(config_dir: String = DataRegistry.DEFAULT_CONFIG_DIR, load_save: bool
 		player_state.roster = registry.get_starting_roster()
 	_resume_stage = progression.cur_stage
 	_resume_scene = progression.cur_scene
+	# boss 清算的自动存档落在 boss 那格(cur_scene 等通关倒计时后才推进 → 见 ProgressionController._execute_push),
+	# 据已永久解锁判别"boss 已通"→ 续到下一关开头,免重开重打 boss;打一半就关时 max 未 +1(==cur_stage)→ 续回 boss。
+	if _resume_scene == ProgressionController.BOSS_SCENE and progression.max_unlocked_stage > _resume_stage:
+		_resume_stage = progression.max_unlocked_stage
+		_resume_scene = 0
 
 
 ## 开一局:据 roster 建 4 格队伍(空位 null 容错)、注掉落填空目标、令 Progression 从续战游标开局。
@@ -79,6 +84,41 @@ func begin_run(stages: Array[StageConfig], stage: int = -1, scene: int = -1) -> 
 			arena.loot_equipment = e.equipment
 			break
 	progression.begin_run(stages, s, sc)
+
+
+## 进城:冻结当前挂机,先把活体装备收口写回持久 roster(否则城镇看不到/会改丢战斗中自动穿的装备)。
+## 不变量 #11:战斗外只写持久层。
+func pause_run() -> void:
+	if arena == null:
+		return
+	_sync_party_equipment()
+	arena.running = false
+
+
+## 出城:据持久 roster Character 重新快照玩家 Entity(吃下城镇里的换装/强化改动),
+## 守 i5:沿用暂停时的 current_hp 夹到新 max_hp(装备变更后 max 可能变),不免费回血。
+func resume_run() -> void:
+	if arena == null:
+		return
+	var old := arena.players
+	var ents: Array[Entity] = []
+	for i in party_characters.size():
+		var c := party_characters[i]
+		if c == null:
+			ents.append(null)
+			continue
+		var e := Entity.from_character(c, registry)
+		var old_hp := e.max_hp()  # 无旧实体可参照时(防御)默认满,正常路径下被下面覆盖
+		if i < old.size() and old[i] != null:
+			old_hp = old[i].current_hp
+		e.current_hp = clampf(old_hp, 0.0, e.max_hp())
+		ents.append(e)
+	arena.players = ents
+	for e in ents:
+		if e != null:
+			arena.loot_equipment = e.equipment
+			break
+	arena.running = true
 
 
 ## roster 补齐到 PARTY_SLOTS 格(不足填 null,守 MVP 4 格空位容错)。

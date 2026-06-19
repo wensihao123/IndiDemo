@@ -26,20 +26,23 @@
 - 节奏曲线(贯穿支柱 1↔2 的设计原则):
   **前期快迭代**(低等级、频繁回城调队)→ **后期稳态**(高等级、约 1–2 小时回城一次,
   趋近纯陪伴)。游玩重心随进度从"主动构筑"滑向"被动陪伴"。
-- v1 的完成定义(草案 —— 待 Producer 正式拍板并拆进 BACKLOG):
+- v1 的完成定义(2026-06-19 Producer 拍板,已拆进 BACKLOG):
   一个能跑通完整闭环的**垂直切片**——挂机探索 → 掉装/材料 → 回城变强 → 打过更硬的怪。
-  - 悬浮窗外壳:底部全宽常驻、800×250 主区、能最小化/恢复。
-  - 探索:1 区域、1 战士、自动打 2-3 种怪、自动掉落。
-  - 装备:2-3 槽位、2-3 稀有度(白/蓝/金)、1-2 种词条(攻击/生命)。
-  - 城镇:换装 + 1 个最简打造/强化(材料 +1 武器)。
-  - 闭环:变强后能打过一个更硬的怪 / 第二波。
-  - 存档:最简 save/load(挂机游戏刚需)。
-  - **核心系统,MVP 必须有(需尽早敲定):**
-    1. **4 人队伍按"4 格 slot"设计,v1 只填 1 个战士**——数据结构从一开始支持 N 人,
-       避免日后加职业/组队时重写地基。招募、其它职业、组合 build 深度全部推后。
-    2. **后台持续推进**——玩家不盯着(窗口在后台 / 在用别的软件)时,探索进度照常推进。
-       这是"挂机"的本质、陪伴支柱的根基。"完全关程序后的离线结算"可推后。
-  - 明确推后到 v1 之后:招募 / 其它职业 / 技能树 / 多区域 / Boss / 离线结算 / 套装宝石 / 复杂词条池。
+  权威清单见 `BACKLOG.md`;以下为口径基线。
+  - 悬浮窗外壳:底部全宽常驻、800×250 主区、能最小化/恢复。**(已落地)**
+  - 探索:1 区域、自动打多种怪、自动掉落、Boss 解锁/团灭回退。**(地基已落地,见下)**
+  - 装备:2-3 槽位、白/蓝/金、攻击/生命词条;掉落 → 穿/分解/进包分流。**(后端已落地;04 收窄为表层+数值定稿)**
+  - 城镇:换装 + 1 个最简打造/强化(材料 +1 武器)。**(05-town,待做)**
+  - 闭环:变强后能打过一个更硬的怪 / Boss。
+  - 存档:最简 save/load。**(已落地 —— 07-save-load 并入 00,通关→关程序→重开续战 round-trip 经手验)**
+  - **团战 / 多敌同屏(2026-06-19 自 Later 提升进 v1):** 战斗引擎已是 lane 多实体,
+     v1 收尾要把"多敌同屏"点亮到可玩(08-team-combat)。
+  - **核心系统:**
+    1. **4 人队伍按"4 格 slot"设计,v1 只填 1 个战士**——数据结构已支持 N 人(roster/slot 已就位)。
+    2. **后台持续推进**——固定步长 tick 已落地,窗口在后台时推进照常。"完全关程序后的离线结算"仍推后。
+  - **2026-06-19 地基现状:** REFACTOR-01 把四层架构 + 掉落后端 + 存档 + lane 多实体引擎全部落地
+     (117/117 测试绿、手动 Play + 存档 round-trip 经手验)。v1 余下 = 表层点亮(04 表层 / 08 团战)+ 城镇(05)+ 难度(06)。
+  - 明确推后到 v1 之后:招募 / 其它职业 / 技能树 / 多区域 / 离线结算 / 套装宝石 / 复杂词条池。
 
 ## 1. 引擎与技术栈
 - 引擎 + 版本:**Godot 4.6**(渲染 Forward Plus,Windows 用 d3d12 驱动)
@@ -54,18 +57,36 @@
 - 其它工具:暂无额外 lint/format;依赖 Godot 编辑器报错与 `--check-only` 把关。
 
 ## 2. 目录约定
+> **2026-06-19 更新:REFACTOR-01 地基重构已落地,目录已成形(不再为空)。**
+> 四层架构详见事实源 `harness/ARCHITECTURE.md` + 人类导读 `harness/ARCHITECTURE-GUIDE.md`。
+> autoload 两枚:`Player`(=`PlayerState`,持久根)→ `Game`(=`GameController`,装配座),顺序不可换。
 ```
 test-2/                   [Godot 项目根,= res://]
-  project.godot
-  src/                    [脚本]            (现为空)
-  scenes/                 [.tscn]           (现为空)
+  project.godot           [autoload: Player(上) → Game(下)]
+  src/
+    core/
+      data/               [纯数据定义:item_base_def / affix_def / loot_table_def]
+      stats/              [属性层:stats_component / stat_modifier]
+      items/              [物品实例层:item_instance / affix_roll / equipment_component]
+      systems/            [系统:loot_generator / loot_intake / data_registry / save_system]
+      combat/             [单局战斗层:combat_arena / progression_controller / entity /
+                           ai_combat_component / skill_component / combat_tuning]
+      meta/               [持久元状态层:player_state(autoload Player)/ character]
+      game_controller.gd  [装配座 autoload Game] · game_keys.gd
+    combat/               [表现层 + 配置:combat_view / enemy_def / stage_config / scene_config]
+    shell/                [floating_shell.gd 悬浮窗外壳]
+  data/config/            [数值配置 JSON:item_bases / affix_pool / loot_tables / starting_roster]
+  scenes/shell/           [floating_shell.tscn 主场景]
   assets/
-    sprites/                                (现为空)
-    audio/                                  (现为空)
+    sprites/              [bg / ui / hero / fx / enemies 占位图]
+    data/combat/          [stage_01.tres / stage_02.tres]
+    audio/                (空)
   harness/                [role 的 artifact,纳入版本控制]
     project-context.md    [本文件]
+    ARCHITECTURE.md       [Arch Guard — 架构事实源] · ARCHITECTURE-GUIDE.md [人类导读]
     BACKLOG.md            [Producer]
     STYLE-BIBLE.md        [Art Spec]
+    arch/                 [REFACTOR-NN-*.md 跨功能重构案]
     features/<NN-slug>/   [每个功能一目录:FEATURE-DESIGN / PLAN / CHANGES / ... / HANDOFF.md]
 ```
 
@@ -92,5 +113,5 @@ godot --headless --check-only      # 语法 / 编译过关
 ## 6. 当前已知的坑 / 临时约束
 - 空项目按 3D 默认配置(Forward Plus 渲染 + Jolt 3D 物理),与 2D 目标不符;搭首个场景时
   需决定渲染模式与是否禁用 3D 物理。
-- 几乎所有系统尚未存在(src/scenes/assets 全空);早期功能需自行 flag 其依赖的前置(如还
-  没有的 autoload / 存档系统)。
+- ~~几乎所有系统尚未存在(src/scenes/assets 全空)~~ **已过时(2026-06-19):** 四层地基 +
+  autoload(Player/Game)+ 存档系统已落地,见 §2 与 ARCHITECTURE.md。新功能对照 ARCHITECTURE.md 接入。

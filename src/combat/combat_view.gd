@@ -53,6 +53,12 @@ var _party_hp_text: Array[Label] = []
 @onready var _rest_btn := Button.new()
 @onready var _flash := ColorRect.new()
 @onready var _fx_layer := Control.new()
+# 只读查阅面板(掉落包 + 当前装备双栏);默认隐藏,按钮切显隐,事件驱动刷新(不每帧)。
+@onready var _panel := Panel.new()
+@onready var _panel_btn := Button.new()
+var _bag_col: VBoxContainer = null
+var _equip_col: VBoxContainer = null
+var _panel_visible := false
 
 
 func _ready() -> void:
@@ -238,6 +244,11 @@ func _on_item_dropped(inst: ItemInstance, dest: StringName) -> void:
 			_spawn_pillar(RARITY_COLOR[&"gold"])
 			_gold_flash()
 		# 白:默默,无额外 FX(守支柱 1/3,PLAN D9)。
+	# 面板开着时事件驱动刷新:自动填空把掉落穿上 → 右栏属性行实时跳变(兑现"看见变强")。
+	if _panel_visible:
+		_refresh_panel()
+		if dest == LootIntake.EQUIPPED:
+			_flash_equip_col()
 
 
 # --- FX(占位)----------------------------------------------------------
@@ -457,3 +468,168 @@ func _build_ui() -> void:
 	_fx_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fx_layer)
+
+	_build_panel()
+
+
+## 只读查阅面板:全区模态遮罩 + 左栏掉落包 / 右栏当前装备&8 维属性;切换按钮叠在最上保持可点。
+func _build_panel() -> void:
+	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel.visible = false
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP   # 开启时吃掉点击,不漏到战斗层
+	add_child(_panel)
+
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.06, 0.07, 0.09, 0.93)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.add_child(bg)
+
+	var bag_head := Label.new()
+	bag_head.text = "— 掉落包 —"
+	bag_head.position = Vector2(20, 10)
+	bag_head.add_theme_font_size_override("font_size", 14)
+	_panel.add_child(bag_head)
+
+	var equip_head := Label.new()
+	equip_head.text = "— 当前装备 —"
+	equip_head.position = Vector2(430, 10)
+	equip_head.add_theme_font_size_override("font_size", 14)
+	_panel.add_child(equip_head)
+
+	_bag_col = VBoxContainer.new()
+	_bag_col.position = Vector2(20, 34)
+	_bag_col.add_theme_constant_override("separation", 1)
+	_panel.add_child(_bag_col)
+
+	_equip_col = VBoxContainer.new()
+	_equip_col.position = Vector2(430, 34)
+	_equip_col.add_theme_constant_override("separation", 1)
+	_panel.add_child(_equip_col)
+
+	# 切换按钮 add 在 _panel 之后 → 永远叠在遮罩之上 → 开着也能点关。
+	_panel_btn.text = "背包/装备"
+	_panel_btn.position = Vector2(360, 12)
+	_panel_btn.pressed.connect(_toggle_panel)
+	add_child(_panel_btn)
+
+
+func _toggle_panel() -> void:
+	_panel_visible = not _panel_visible
+	_panel.visible = _panel_visible
+	if _panel_visible:
+		_refresh_panel()
+
+
+## 事件驱动重建两栏(打开时 + 可见时收到掉落);不进 _process,精确对上"掉落→填空→跳变"时机。
+func _refresh_panel() -> void:
+	if _gc == null or _bag_col == null or _equip_col == null:
+		return
+	_rebuild_bag_col()
+	_rebuild_equip_col()
+
+
+func _rebuild_bag_col() -> void:
+	for c in _bag_col.get_children():
+		c.queue_free()
+	var bag: Array = _gc.player_state.bag if _gc.player_state != null else []
+	if bag.is_empty():
+		_bag_col.add_child(_make_label("(空)", 12, Color(0.55, 0.55, 0.6)))
+		return
+	for inst in bag:
+		var col: Color = RARITY_COLOR.get(inst.rarity, Color(0.85, 0.85, 0.85))
+		_bag_col.add_child(_make_label(
+			"%s · ilvl%d · %s" % [_slot_text(inst.base_id), inst.ilvl, _rarity_text(inst.rarity)], 13, col))
+		for roll in inst.affixes:
+			_bag_col.add_child(_make_label(
+				"    %s %s" % [_stat_name(roll.stat), _format_stat_value(roll.stat, roll.value)],
+				11, Color(0.72, 0.78, 0.85)))
+
+
+func _rebuild_equip_col() -> void:
+	for c in _equip_col.get_children():
+		c.queue_free()
+	var ent := _panel_entity()         # R3:begin_run 前无活体 → 守空,不空引用。
+	if ent == null:
+		_equip_col.add_child(_make_label("(未进入战斗)", 12, Color(0.55, 0.55, 0.6)))
+		return
+	for slot in GameKeys.SLOTS:
+		var inst: ItemInstance = ent.equipment.get_equipped(slot) if ent.equipment != null else null
+		var desc := "—"
+		if inst != null:
+			desc = "ilvl%d %s" % [inst.ilvl, _rarity_text(inst.rarity)]
+		_equip_col.add_child(_make_label("%s: %s" % [_slot_text(slot), desc], 12, Color(0.85, 0.88, 0.92)))
+	_equip_col.add_child(_make_label("", 6, Color.WHITE))   # 槽位/属性间隔
+	if ent.stats != null:                                  # 与 equipment 守卫对称:半装配 Entity 不空引用。
+		for stat in GameKeys.STATS:
+			_equip_col.add_child(_make_label(
+				"%s  %s" % [_stat_name(stat), _format_stat_value(stat, ent.stats.get_final(stat))],
+				12, Color(0.8, 0.85, 0.9)))
+
+
+# 第一个非空队员的活体 Entity(读它的 EquipmentComponent/StatsComponent 才能反映运行时自动填空)。
+func _panel_entity() -> Entity:
+	if _arena == null:
+		return null
+	for e in _arena.players:
+		if e != null:
+			return e
+	return null
+
+
+## 自动填空穿上掉落 → 右栏闪一下绿(纯表现,"变强显形");复用 tween 风格。
+func _flash_equip_col() -> void:
+	var g := ColorRect.new()
+	g.color = Color(0.3, 1.0, 0.4, 0.0)
+	g.position = Vector2(420, 6)
+	g.size = Vector2(360, 238)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(g)
+	var tw := create_tween()
+	tw.tween_property(g, "color:a", 0.35, 0.08)
+	tw.tween_property(g, "color:a", 0.0, 0.35)
+	tw.tween_callback(g.queue_free)
+
+
+func _make_label(text: String, size: int, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+
+func _slot_text(slot: StringName) -> String:
+	match slot:
+		GameKeys.SLOT_WEAPON: return "武器"
+		GameKeys.SLOT_ARMOR: return "护甲"
+		GameKeys.SLOT_ACCESSORY: return "饰品"
+		_: return String(slot)
+
+
+func _stat_name(stat: StringName) -> String:
+	match stat:
+		GameKeys.STAT_ATTACK: return "攻击"
+		GameKeys.STAT_MAX_HP: return "生命"
+		GameKeys.STAT_ATTACK_SPEED: return "攻速"
+		GameKeys.STAT_ARMOR: return "护甲"
+		GameKeys.STAT_DODGE_CHANCE: return "闪避"
+		GameKeys.STAT_CRIT_CHANCE: return "暴击率"
+		GameKeys.STAT_CRIT_MULT: return "暴伤"
+		GameKeys.STAT_HP_REGEN: return "回血"
+		_: return String(stat)
+
+
+## D6:按维度语义格式化(百分比/倍率/每秒/整数),裸浮点不可读。
+func _format_stat_value(stat: StringName, v: float) -> String:
+	match stat:
+		GameKeys.STAT_CRIT_CHANCE, GameKeys.STAT_DODGE_CHANCE:
+			return "%.1f%%" % (v * 100.0)
+		GameKeys.STAT_CRIT_MULT:
+			return "×%.2f" % v
+		GameKeys.STAT_ATTACK_SPEED:
+			return "%.2f/s" % v
+		GameKeys.STAT_HP_REGEN:
+			return "%.1f/s" % v
+		_:
+			return str(int(round(v)))

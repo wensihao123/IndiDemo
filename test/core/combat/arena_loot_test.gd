@@ -50,6 +50,46 @@ func _enemy(hp: float, ilvl: int) -> Entity:
 	def.item_level = ilvl
 	return auto_free(Entity.from_enemy_def(def))
 
+func _enemy_rarity(hp: float, ilvl: int, w: float, b: float, g: float) -> Entity:
+	var def := EnemyDef.new()
+	def.max_hp = hp
+	def.attack = 0.0
+	def.attack_speed = 0.0
+	def.drop_chance = 1.0
+	def.item_level = ilvl
+	def.rarity_weight_white = w
+	def.rarity_weight_blue = b
+	def.rarity_weight_gold = g
+	return auto_free(Entity.from_enemy_def(def))
+
+func test_rarity_follows_enemy_weights_all_white() -> void:
+	# 权重 100/0/0 → 任何 seed 都只能出白。
+	for s in [1, 2, 7, 99]:
+		var r := _registry()
+		var ps: PlayerState = auto_free(PlayerState.new())
+		var a := _arena_with_loot(r, ps, _hero(r))
+		a.rng.seed = s
+		var dropped := [null]
+		a.item_dropped.connect(func(inst, _d): dropped[0] = inst)
+		var es: Array[Entity] = [_enemy_rarity(50.0, 5, 100.0, 0.0, 0.0)]
+		a.start_battle(es)
+		a.tick_combat()
+		assert_str((dropped[0] as ItemInstance).rarity).is_equal(GameKeys.RARITY_WHITE)
+
+func test_rarity_follows_enemy_weights_all_gold() -> void:
+	# 权重 0/0/100 → 任何 seed 都只能出金。
+	for s in [1, 2, 7, 99]:
+		var r := _registry()
+		var ps: PlayerState = auto_free(PlayerState.new())
+		var a := _arena_with_loot(r, ps, _hero(r))
+		a.rng.seed = s
+		var dropped := [null]
+		a.item_dropped.connect(func(inst, _d): dropped[0] = inst)
+		var es: Array[Entity] = [_enemy_rarity(50.0, 5, 0.0, 0.0, 100.0)]
+		a.start_battle(es)
+		a.tick_combat()
+		assert_str((dropped[0] as ItemInstance).rarity).is_equal(GameKeys.RARITY_GOLD)
+
 func test_enemy_death_drops_item_with_enemy_item_level_into_player_state() -> void:
 	var r := _registry()
 	var ps: PlayerState = auto_free(PlayerState.new())

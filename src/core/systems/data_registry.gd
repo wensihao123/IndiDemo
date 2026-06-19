@@ -10,6 +10,7 @@ var _item_bases: Dictionary = {}   # slot(StringName) -> ItemBaseDef
 var _affixes: Array[AffixDef] = []
 var _loot_table: LootTableDef = null
 var _starting_roster: Array[Character] = []   # 默认起始队伍(PLAN D3,取代旧 director @export warrior_*)
+var _enhance_config: EnhanceConfigDef = null  # 强化数值(05-town,四常量走配置不硬编码)
 var _errors: Array[String] = []
 
 
@@ -21,6 +22,7 @@ func load_all(config_dir: String = DEFAULT_CONFIG_DIR) -> bool:
 	var affixes: Variant = _read_json(config_dir.path_join("affix_pool.json"))
 	var table: Variant = _read_json(config_dir.path_join("loot_tables.json"))
 	var roster: Variant = _read_json(config_dir.path_join("starting_roster.json"))
+	var enhance: Variant = _read_json(config_dir.path_join("enhance.json"))
 	if not _errors.is_empty():
 		return false
 	if not (bases is Dictionary):
@@ -31,10 +33,13 @@ func load_all(config_dir: String = DEFAULT_CONFIG_DIR) -> bool:
 		_errors.append("loot_tables.json 顶层须为对象")
 	if not (roster is Array):
 		_errors.append("starting_roster.json 顶层须为数组")
+	if not (enhance is Dictionary):
+		_errors.append("enhance.json 顶层须为对象")
 	if not _errors.is_empty():
 		return false
 	ingest(bases, affixes, table)        # 填 _errors(三模板)
 	_ingest_starting_roster(roster)      # 追加 roster 错(不清 _errors)
+	_ingest_enhance(enhance)             # 追加强化配置错(不清 _errors)
 	return _errors.is_empty()
 
 
@@ -82,6 +87,18 @@ func get_starting_roster() -> Array[Character]:
 func ingest_starting_roster(roster: Array) -> bool:
 	_errors.clear()
 	_ingest_starting_roster(roster)
+	return _errors.is_empty()
+
+
+## 强化数值配置(05-town;load_all 后可用,未加载返回 null)。
+func get_enhance_config() -> EnhanceConfigDef:
+	return _enhance_config
+
+
+## 供测试直接喂内存强化配置(清错后单独校验)。
+func ingest_enhance(enhance: Dictionary) -> bool:
+	_errors.clear()
+	_ingest_enhance(enhance)
 	return _errors.is_empty()
 
 
@@ -228,6 +245,24 @@ func _ingest_starting_roster(roster: Array) -> void:
 		else:
 			_errors.append("起始 roster[%d]:base_stats 须为对象" % i)
 		_starting_roster.append(c)
+
+
+func _ingest_enhance(enhance: Dictionary) -> void:
+	_enhance_config = null
+	var d: EnhanceConfigDef = EnhanceConfigDef.new()
+	d.per_level = float(enhance.get("per_level", 0.10))
+	if d.per_level <= 0.0:
+		_errors.append("强化配置:per_level 须 > 0")
+	d.cap = int(enhance.get("cap", 10))
+	if d.cap < 1:
+		_errors.append("强化配置:cap 须 ≥ 1")
+	d.cost_base = int(enhance.get("cost_base", 1))
+	if d.cost_base < 0:
+		_errors.append("强化配置:cost_base 须 ≥ 0")
+	d.cost_step = int(enhance.get("cost_step", 1))
+	if d.cost_step < 0:
+		_errors.append("强化配置:cost_step 须 ≥ 0")
+	_enhance_config = d
 
 
 func _to_stringname_array(v: Variant) -> Array[StringName]:

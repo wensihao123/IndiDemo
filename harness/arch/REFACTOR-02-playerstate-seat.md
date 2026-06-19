@@ -12,6 +12,10 @@ next: Planner
 
 > REFACTOR-01 步 5(层 8 autoload 注册)的一处**座位级架构决策**,由 Engine Integrator 的
 > 〔F-Arch-seat〕旗标触发。策略级,不写代码 / 不写文件级步骤——那是 Planner 的 §0 PLAN。
+>
+> ⚠ **实现修正(2026-06-19 落地后):** 本文多处写的运行时路径 `/root/PlayerState` 与实际不符——
+> autoload **节点名取 `Player`**(`PlayerState` 会撞 `class_name` 致注册失败),真实路径 = `/root/Player`
+> (`get_node("/root/Player") as PlayerState`)。决策本身(升 autoload + reset-on-boot + 唯一实例)不变,仅命名落地有别。详见 ARCHITECTURE.md §3.2。
 
 ## 1. 触发 / Trigger
 

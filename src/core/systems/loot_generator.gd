@@ -3,6 +3,22 @@ class_name LootGenerator
 ## 掉落生成(纯逻辑,承 04 B-4 PoE roll):稀有度定条数、ilvl 定可取 Tier、部位池定可选词缀。
 ## rng 由调用方注入(可 seed → 可测);本批数值全占位,生成的是"结构正确"的 ItemInstance。
 
+## 按权重数组随机选一个下标(归一化加权)。空数组或权重和≤0 时退回 0。负权重按 0 处理。
+static func pick_weighted(weights: Array, rng: RandomNumberGenerator) -> int:
+	var total := 0.0
+	for w in weights:
+		total += maxf(0.0, float(w))
+	if total <= 0.0:
+		return 0
+	var r := rng.randf() * total
+	var acc := 0.0
+	for i in weights.size():
+		acc += maxf(0.0, float(weights[i]))
+		if r < acc:
+			return i
+	return weights.size() - 1
+
+
 ## ilvl/rarity 来源属第二批战斗侧接线(PLAN D8);此处皆为入参,纯函数。
 func generate(slot: StringName, ilvl: int, rarity: StringName, registry: DataRegistry, rng: RandomNumberGenerator) -> ItemInstance:
 	var inst := ItemInstance.new(slot, ilvl, rarity)

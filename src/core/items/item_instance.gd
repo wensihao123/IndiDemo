@@ -8,6 +8,7 @@ var ilvl: int = 1
 var rarity: StringName = GameKeys.RARITY_WHITE
 var signature_axes: Array[StringName] = []   # 本件实际生效的招牌轴(ALL=全轴 / PICK_ONE=选中那一轴)
 var affixes: Array[AffixRoll] = []
+var enhance_level: int = 0            # 强化等级(城镇花材料确定性 +1;随实例走,无损穿脱保留)
 
 
 func _init(p_base_id: StringName = &"", p_ilvl: int = 1, p_rarity: StringName = GameKeys.RARITY_WHITE) -> void:
@@ -23,6 +24,13 @@ func to_modifiers(registry: DataRegistry) -> Array[StatModifier]:
 	if base != null:
 		for axis in signature_axes:
 			out.append(StatModifier.new(axis, StatModifier.Kind.FLAT, base.base_value(axis, ilvl), self))
+		# 强化加成:只作用主轴(signature_axes[0]),一条 FLAT,守 i4 不双轴超线性、i7 确定性纯增益。
+		if enhance_level > 0 and not signature_axes.is_empty():
+			var cfg := registry.get_enhance_config()
+			if cfg != null:
+				var axis: StringName = signature_axes[0]
+				var bonus := base.base_value(axis, ilvl) * cfg.per_level * enhance_level
+				out.append(StatModifier.new(axis, StatModifier.Kind.FLAT, bonus, self))
 	for roll in affixes:
 		out.append(StatModifier.new(roll.stat, StatModifier.kind_from_name(roll.kind), roll.value, self))
 	return out
@@ -36,7 +44,7 @@ func to_dict() -> Dictionary:
 	for a in signature_axes:
 		axes.append(String(a))
 	return {"base_id": String(base_id), "ilvl": ilvl, "rarity": String(rarity),
-		"signature_axes": axes, "affixes": rolls}
+		"signature_axes": axes, "affixes": rolls, "enhance_level": enhance_level}
 
 
 static func from_dict(d: Dictionary) -> ItemInstance:
@@ -50,4 +58,5 @@ static func from_dict(d: Dictionary) -> ItemInstance:
 	for r in d.get("affixes", []):
 		rolls.append(AffixRoll.from_dict(r))
 	inst.affixes = rolls
+	inst.enhance_level = int(d.get("enhance_level", 0))
 	return inst

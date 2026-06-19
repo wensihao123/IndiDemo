@@ -25,6 +25,40 @@ func add_to_bag(instance: ItemInstance) -> void:
 	bag.append(instance)
 
 
+## 手动换装(城镇主动路径,可替换;区别于挂机自动填空 i3 只增不替):
+## 把背包里的 item 穿到 c 的 slot;原装备(若有)无损退回背包。
+func equip_from_bag(c: Character, slot: StringName, item: ItemInstance) -> void:
+	bag.erase(item)
+	var prev: Variant = c.equipped.get(slot)
+	if prev != null:
+		bag.append(prev)
+	c.equipped[slot] = item
+
+
+## 脱下 c 的 slot 装备退回背包(空槽则无操作)。
+func unequip_to_bag(c: Character, slot: StringName) -> void:
+	var item: Variant = c.equipped.get(slot)
+	if item == null:
+		return
+	c.equipped.erase(slot)
+	bag.append(item)
+
+
+## 强化 item 一级(确定性 +1,守 i7):满级 / 材料不足 → 拒绝且不扣半截材料,返回是否成功。
+## 消耗该件所在槽的白材料 slot|white(item.base_id == slot)。
+func enhance_item(item: ItemInstance, cfg: EnhanceConfigDef) -> bool:
+	if item == null or cfg == null:
+		return false
+	if cfg.is_max(item.enhance_level):
+		return false
+	var cost := cfg.cost_for_level(item.enhance_level)
+	if get_material(item.base_id, GameKeys.RARITY_WHITE) < cost:
+		return false
+	add_material(item.base_id, GameKeys.RARITY_WHITE, -cost)
+	item.enhance_level += 1
+	return true
+
+
 ## 清空全部持久态(roster/bag/materials)。autoload 在测试进程内持久,_boot 须 reset-on-boot
 ## 从干净态起,再 load 存档/默认 roster(ARCHITECTURE §4 不变量 8 / REFACTOR-02 §3)。
 func reset() -> void:
