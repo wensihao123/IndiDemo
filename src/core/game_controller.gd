@@ -1,8 +1,9 @@
 extends Node
 class_name GameController
-## 装配座(PLAN D1):持有 per-run CombatArena+ProgressionController、DataRegistry、PlayerState,
+## 装配座(PLAN D1):持有 per-run CombatArena+ProgressionController、DataRegistry,
+## **读**全局持久根 PlayerState(/root/Player,不自持·REFACTOR-02);
 ## _ready 装配 + 从存档/默认 roster 建队 + 把 arena 挂进树(固定步长 tick 驱动战斗)。表现层只读它。
-## autoload 注册留步 5(Engine Integrator);DataRegistry 由本类持有不单独注册(D4)。
+## Combat→Game autoload 切换留步 5(Engine Integrator);DataRegistry 由本类持有不单独注册(D4)。
 
 const PARTY_SLOTS := 4
 
@@ -33,8 +34,10 @@ func _boot(config_dir: String = DataRegistry.DEFAULT_CONFIG_DIR, load_save: bool
 	if not registry.load_all(config_dir):
 		push_error("DataRegistry 加载失败:%s" % "\n".join(registry.get_load_errors()))
 
-	player_state = PlayerState.new()
-	add_child(player_state)
+	# 复用全局持久根(REFACTOR-02):不自持。reset-on-boot 清残留态(autoload 在测试进程内持久),
+	# 再由下方 load 存档 / 默认 roster 填充——证存档文件而非内存残留驱动恢复。
+	player_state = get_node("/root/Player") as PlayerState
+	player_state.reset()
 
 	arena = CombatArena.new()
 	arena.tuning = CombatTuning.new()

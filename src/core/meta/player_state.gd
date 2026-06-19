@@ -25,6 +25,14 @@ func add_to_bag(instance: ItemInstance) -> void:
 	bag.append(instance)
 
 
+## 清空全部持久态(roster/bag/materials)。autoload 在测试进程内持久,_boot 须 reset-on-boot
+## 从干净态起,再 load 存档/默认 roster(ARCHITECTURE §4 不变量 8 / REFACTOR-02 §3)。
+func reset() -> void:
+	roster.clear()
+	bag.clear()
+	materials.clear()
+
+
 func to_dict() -> Dictionary:
 	var roster_d: Array = []
 	for c in roster:

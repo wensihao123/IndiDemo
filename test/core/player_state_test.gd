@@ -40,6 +40,19 @@ func test_character_round_trip() -> void:
 	var c2 := Character.from_dict(d)
 	assert_dict(c2.to_dict()).is_equal(d)
 
+func test_reset_clears_all_persistent_state() -> void:
+	# reset-on-boot 的内部方法:roster/bag/materials 三者全清(REFACTOR-02 §3,守测试隔离)。
+	var ps: PlayerState = auto_free(PlayerState.new())
+	var c := Character.new(&"hero_1", &"warrior")
+	ps.roster.append(c)
+	ps.add_to_bag(_sample_item())
+	ps.add_material(GameKeys.SLOT_WEAPON, GameKeys.RARITY_WHITE, 1)
+	ps.reset()
+	assert_int(ps.roster.size()).is_equal(0)
+	assert_int(ps.bag.size()).is_equal(0)
+	assert_int(ps.materials.size()).is_equal(0)
+
+
 func test_player_state_round_trip() -> void:
 	var ps: PlayerState = auto_free(PlayerState.new())
 	var c := Character.new(&"hero_1", &"warrior")

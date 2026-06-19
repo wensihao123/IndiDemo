@@ -5,5 +5,6 @@
 | # | 文档 | 触发 | 状态 | 下一步 |
 |---|------|------|------|--------|
 | 01 | [REFACTOR-01 底层地基重设计](REFACTOR-01-foundation-redesign.md) | 04 装不进旧结构 + 用户决定整体重铺(组件化/模板实例/modifier/PoE 装备/lane 团战) | draft | `/role-planner 00-foundation-redesign`(把 §4 八层拆成有序 PLAN);Producer 回写 BACKLOG/project-context |
+| 02 | [REFACTOR-02 PlayerState 座位决策](REFACTOR-02-playerstate-seat.md) | REFACTOR-01 步 5 autoload 注册的座位分叉(EI 〔F-Arch-seat〕):单座 vs 拆座 | draft | `/role-planner 00-foundation-redesign`(把 §4 四步落成步 5 §0 PLAN:`PlayerState.reset()` → `_boot` 改读全局+reset-on-boot → 测试隔离收口) |
 
 > 执行家:`harness/features/00-foundation-redesign/`(放 PLAN/CHANGES/REVIEW);设计源 = 本 REFACTOR-01 + `harness/ARCHITECTURE.md`。03/04 留作设计/历史档。

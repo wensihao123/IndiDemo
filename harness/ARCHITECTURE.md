@@ -23,8 +23,12 @@ updated: 2026-06-19
    ▲ (读快照)
 [持久元状态层] PlayerState(autoload) / SaveSystem  —— 跨局存在、= 存档目标:roster + 背包 + 材料
    ▲ (读模板)
-[数据层]  DataRegistry(autoload) + 静态模板        —— 只读蓝图:.tres + JSON,启动加载校验
+[数据层]  DataRegistry(Game 持有·RefCounted) + 静态模板  —— 只读蓝图:.tres + JSON,启动加载校验
 ```
+
+> **座位约定(REFACTOR-02,2026-06-19):** 持久根 `PlayerState` 是 **autoload**,任何系统经全局单例直达;
+> 单局编排座 `Game`(GameController,autoload)持有 per-run(arena/progression)+ 只读 `DataRegistry`,
+> **读** PlayerState 但**不"拥有"**它。`DataRegistry` 故意保持 owned-RefCounted(非 autoload,见 §3.2/§6)。
 
 ## 2. 数据模型 / Data model
 
@@ -64,11 +68,12 @@ updated: 2026-06-19
 ### 3.2 全局系统
 | 系统 | 形态 | 职责 |
 |------|------|------|
-| `DataRegistry` | autoload | 启动加载 + **校验** .tres/JSON 模板,对外发 def 对象 |
+| `GameController`(`Game`) | **autoload** | **单局编排座 + boot 入口**:读全局 `PlayerState`、持有 `DataRegistry`+per-run `arena`/`progression`,装配并驱动一局;autosave。**不"拥有"持久态**(REFACTOR-02) |
+| `DataRegistry` | **`Game` 持有(RefCounted,非 autoload)** | 启动加载 + **校验** .tres/JSON 模板,对外发 def 对象;经 `Game.registry` 可达(D4:Node-autoload 会令数据层单测留 orphan,故 owned;05-town 需战斗外读模板时复审,见 §6) |
 | `LootGenerator` | 纯逻辑模块 | 模板→实例流水线:据 怪/ilvl/掉落表 roll `ItemInstance`(B-4 PoE 式 Tier) |
 | `CombatArena` / `CombatResolver` | per-run | 编排一局:lane 站位、固定步长 tick、目标选择;伤害结算**委托 SkillComponent** |
 | `ProgressionController` | per-run | 进度状态机(承现 director 的 PROGRESSING/GRINDING/倒计时/REST + 团灭回退 + Boss 解锁) |
-| `PlayerState` | autoload | **持久** roster + 背包 + 材料库存 = 存档目标 |
+| `PlayerState` | **autoload(持久根)** | **持久** roster + 背包 + 材料库存 = 存档目标;有 `material_gained` 跨系统信号 + `reset()`(boot 时清态,守测试隔离) |
 | `SaveSystem` | 系统 | 序列化 `PlayerState` |
 
 ### 3.3 允许的依赖方向(**严禁反向**)
@@ -88,6 +93,7 @@ updated: 2026-06-19
 5. **信号过去式;跨系统 signal,实体内直调**(承 project-context §3)。
 6. **数值/路径不硬编码** — 全走 `.tres`/JSON 配置(hard-NO);新增 `DataRegistry` 校验为第一道闸。
 7. **战斗站位 = 槽位/分路抽象**(2026-06-19 定):实体站抽象排位(前/后排 × 序)+ "接近→进射程→出手",**无真实 2D 自由移动 / 碰撞 / 抛射物**。守支柱 1"瞥一眼看懂"。
+8. **持久根经全局直达,不穿 `Game`**(REFACTOR-02,2026-06-19):`PlayerState` 是 autoload 唯一实例;非 per-run 消费者(城镇/存档/UI)读全局 `PlayerState`,**绝不**经 `Game.player_state` 反穿战斗编排座。`Game.player_state` 仅为战斗座自用的同实例缓存引用——**唯一对象、非第二份**。`Game` 持有 per-run + 只读 registry,不"拥有"持久态。
 
 ## 5. 扩展点 / Extension points
 
@@ -107,3 +113,5 @@ updated: 2026-06-19
 - **组件是 Node 还是 RefCounted** — 倾向 Node2D `Entity` + Node 子组件(AnimationComponent 必在树内;AICombat 需 tick);纯算组件(Stats)可 RefCounted。**软决策,留 Planner/Implementer 定。**
 - **save 格式版本化** — 以后加字段需版本号 + 迁移;留 `SaveSystem` 设计,本期内存态先行。
 - **JSON 校验严格度** — DataRegistry 校验是防策划数据错的第一道闸,别偷懒(类型/门槛/部位池合法性)。
+- **`DataRegistry` 座位待复审(REFACTOR-02)** — 现为 `Game` 持有的 RefCounted(只读、当前仅战斗座消费、免 Node-orphan 测试摩擦)。**原则:autoload 留给真正全局/多消费者/可变持久或发信号的根(PlayerState),只读单消费者依赖保持 owned**。**复审点:05-town 打造需在战斗外读模板时,DataRegistry 变多消费者 → 届时定"升 autoload(测试自 free)还是注入",别现在提前抽象(守 hard-NO)。**
+- **`PlayerState` autoload 测试隔离(REFACTOR-02)** — autoload 在测试进程内持久,故 `_boot` 须 **reset-on-boot**(`player_state.reset()` 清 roster/bag/材料后再 load/默认 roster);"重启"语义用 reset+load 表达,比"new 第二个 GameController"更忠实(证存档文件而非内存残留驱动恢复)。落地见 `arch/REFACTOR-02-playerstate-seat.md` §4 = 步 5 §0。
