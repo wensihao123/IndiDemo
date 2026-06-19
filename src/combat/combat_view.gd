@@ -65,8 +65,8 @@ var _slot_hp_bar: Array[ColorRect] = []
 @onready var _enemy_hp_bar := ColorRect.new()
 @onready var _countdown_label := Label.new()
 @onready var _enrage_label := Label.new()  # 敌人软狂暴横幅(克制:窗内一行,读 enraged 态)
+@onready var _retreat_invite_label := Label.new()  # 〔06〕卡关时克制的"回城变强"邀请(只读 GRINDING 态,不弹窗、可无视)
 @onready var _push_btn := Button.new()
-@onready var _rest_btn := Button.new()
 @onready var _flash := ColorRect.new()
 @onready var _fx_layer := Control.new()
 # 只读查阅面板(掉落包 + 当前装备双栏);默认隐藏,按钮切显隐,事件驱动刷新(不每帧)。
@@ -94,9 +94,7 @@ func _ready() -> void:
 	_arena.enemy_enraged.connect(_on_enemy_enraged)
 	_arena.item_dropped.connect(_on_item_dropped)
 	_prog.boss_cleared.connect(_on_boss_cleared)
-	_prog.rest_requested.connect(_on_rest_requested)
 	_push_btn.pressed.connect(func(): _prog.request_push())
-	_rest_btn.pressed.connect(func(): _prog.request_rest())
 	if not stages.is_empty():
 		_gc.begin_run(stages)
 	_push_log("⚔ 战斗开始")
@@ -227,7 +225,7 @@ func _update_progress_and_buttons() -> void:
 	var grinding := mode == Mode.GRINDING
 	var countdown := mode == Mode.STAGE_CLEAR_COUNTDOWN
 	_push_btn.visible = grinding
-	_rest_btn.visible = grinding or countdown
+	_retreat_invite_label.visible = grinding  # 〔06〕卡关时才邀请回城,平时隐藏(不打断陪伴)
 	_countdown_label.visible = countdown
 	if countdown:
 		_countdown_label.text = "通关!%.1fs 后推进" % maxf(0.0, _prog.countdown_remaining)
@@ -240,13 +238,12 @@ func _progress_text() -> String:
 	var sc: int = _prog.cur_scene
 	var stage_no := s + 1
 	match _prog.mode:
-		ProgressionController.Mode.RESTING:
-			return "修整中(占位 · 城镇 = 04)"
 		ProgressionController.Mode.STAGE_CLEAR_COUNTDOWN:
 			return "第 %d 关 · 通关" % stage_no
 		ProgressionController.Mode.GRINDING:
 			var where := "Boss" if sc == ProgressionController.BOSS_SCENE else "场景 %d/3" % (sc + 1)
-			return "第 %d 关 · %s · 卡关刷怪" % [stage_no, where]
+			# 〔06〕卡关可读:一眼看懂"卡在哪一档墙、不是 bug",余光可读(回城邀请见 _retreat_invite_label)。
+			return "⛰ 第 %d 关 · %s · 卡住了 · 安全刷怪中" % [stage_no, where]
 		_:
 			if sc == ProgressionController.BOSS_SCENE:
 				return "第 %d 关 · Boss" % stage_no
@@ -265,11 +262,14 @@ func _on_party_wiped() -> void:
 
 
 func _on_boss_cleared(stage: int) -> void:
-	_push_log("👑 通关第 %d 关!" % (stage + 1))
-
-
-func _on_rest_requested() -> void:
-	_push_log("🏕 修整(占位)")
+	# 〔06〕突破庆祝:打通"末关"(v1 内容终点)比普通过关更重 = 里程碑级占位庆祝(全屏更亮更久的闪);
+	# 普通关维持原"👑 通关"。末关之后进终点循环重刷 Boss(决策 B),故本回调会重复触发,占位接受重复("再次通关")。
+	var is_last := _prog != null and stage >= _prog.stages.size() - 1
+	if is_last:
+		_push_log("🏆 打通 v1 全部内容!终点关 · 循环挑战 Boss")
+		_milestone_flash()
+	else:
+		_push_log("👑 通关第 %d 关!" % (stage + 1))
 
 
 func _on_hit_dealt(amount: float, is_crit: bool) -> void:
@@ -382,6 +382,21 @@ func _gold_flash() -> void:
 	tw.tween_property(_flash, "modulate:a", 0.5, 0.06)
 	tw.tween_property(_flash, "modulate:a", 0.0, 0.22)
 	tw.tween_callback(func(): _flash.visible = false)
+
+
+func _milestone_flash() -> void:
+	# 〔06〕v1 终点里程碑庆祝:比普通金装一闪更重(更亮、更久)的占位全屏闪。
+	# 用独立 overlay(不复用 _flash,免与金装闪共享色态);正式特效/音留全局 UI·juice 统一轮。
+	var m := ColorRect.new()
+	m.color = Color(1.0, 0.95, 0.6)
+	m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.modulate.a = 0.0
+	_fx_layer.add_child(m)
+	var tw := create_tween()
+	tw.tween_property(m, "modulate:a", 0.85, 0.12)
+	tw.tween_property(m, "modulate:a", 0.0, 0.7)
+	tw.tween_callback(m.queue_free)
 
 
 # --- 日志 ---------------------------------------------------------------
@@ -527,6 +542,14 @@ func _build_ui() -> void:
 	_countdown_label.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
 	add_child(_countdown_label)
 
+	# 〔06〕卡关回城邀请:进度读出下方一行克制提示,仅 GRINDING 态显(_update_progress_and_buttons 控),不弹窗、可无视。
+	_retreat_invite_label.text = "打不过?回城强化 / 换装,变强后点「推进」再冲一次"
+	_retreat_invite_label.position = Vector2(16, 36)
+	_retreat_invite_label.add_theme_font_size_override("font_size", 12)
+	_retreat_invite_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.45))
+	_retreat_invite_label.visible = false
+	add_child(_retreat_invite_label)
+
 	_enrage_label.text = "🔥 敌人狂暴"
 	_enrage_label.position = Vector2(560, 40)
 	_enrage_label.add_theme_font_size_override("font_size", 15)
@@ -538,11 +561,6 @@ func _build_ui() -> void:
 	_push_btn.position = Vector2(660, 12)
 	_push_btn.visible = false
 	add_child(_push_btn)
-
-	_rest_btn.text = "修整"
-	_rest_btn.position = Vector2(720, 12)
-	_rest_btn.visible = false
-	add_child(_rest_btn)
 
 	# 金装一闪覆盖层(铺满主区)。
 	_flash.color = Color(1.0, 0.9, 0.4)
@@ -584,10 +602,17 @@ func _build_panel() -> void:
 	equip_head.add_theme_font_size_override("font_size", 14)
 	_panel.add_child(equip_head)
 
+	# 掉落包可能堆很多件 → 套 ScrollContainer 才能滚到底(占位面板,精修留 UI·juice 轮)。
+	var bag_scroll := ScrollContainer.new()
+	bag_scroll.position = Vector2(20, 34)
+	bag_scroll.size = Vector2(400, 206)
+	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_panel.add_child(bag_scroll)
+
 	_bag_col = VBoxContainer.new()
-	_bag_col.position = Vector2(20, 34)
+	_bag_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bag_col.add_theme_constant_override("separation", 1)
-	_panel.add_child(_bag_col)
+	bag_scroll.add_child(_bag_col)
 
 	_equip_col = VBoxContainer.new()
 	_equip_col.position = Vector2(430, 34)

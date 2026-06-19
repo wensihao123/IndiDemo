@@ -252,9 +252,15 @@ func _build_ui() -> void:
 	_compare_col.add_theme_constant_override("separation", 3)
 	_town_root.add_child(_compare_col)
 
-	_bag_col.position = Vector2(540, 40)
+	# 背包可换件可能很多 → 套 ScrollContainer 才能滚到底(占位,精修留 UI·juice 轮)。
+	var bag_scroll := ScrollContainer.new()
+	bag_scroll.position = Vector2(540, 40)
+	bag_scroll.size = Vector2(250, 205)
+	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_town_root.add_child(bag_scroll)
+	_bag_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bag_col.add_theme_constant_override("separation", 1)
-	_town_root.add_child(_bag_col)
+	bag_scroll.add_child(_bag_col)
 
 
 # --- 格式化(与 CombatView 同语言;v1 三行重复优于过早抽象)----------------

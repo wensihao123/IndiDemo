@@ -44,7 +44,13 @@ func begin_run(p_stages: Array[StageConfig], stage := 0, scene := 0) -> void:
 	stages = p_stages
 	cur_stage = stage
 	cur_scene = scene
-	max_unlocked_stage = maxi(max_unlocked_stage, stage)
+	# 末关边界(06 决策 C):补不变量 #9 未定义的"末关 Boss 已通"续战。game_controller 在末关 Boss 清算存档续战时
+	# 会把 _resume_stage 设成 max_unlocked_stage(= 末关+1 = stages.size(),越界);_boot 处无 stages 无法夹。
+	# 这里持 stages,把越界游标夹回末关 Boss → 与决策 B 的终点循环一致(续战即重刷末关 Boss,非空场)。
+	if cur_stage >= stages.size() and not stages.is_empty():
+		cur_stage = stages.size() - 1
+		cur_scene = BOSS_SCENE
+	max_unlocked_stage = maxi(max_unlocked_stage, cur_stage)
 	_kills_this_scene = 0
 	mode = Mode.PROGRESSING
 	if arena != null:
@@ -129,8 +135,15 @@ func advance_after_wave() -> void:
 		max_unlocked_stage = maxi(max_unlocked_stage, beaten_stage + 1)
 		boss_cleared.emit(beaten_stage)
 		_revive_party()
-		advance_target_stage = beaten_stage + 1
-		advance_target_scene = 0
+		# 末关边界(06 决策 B):有下一关 → 推进到下一关开头;末关(无下一关)→ advance_target 指回本关 Boss,
+		# 倒计时到点 _execute_push 重刷末关 Boss = v1 内容终点的安全循环陪伴,而非把游标推到 stages.size()(越界→空场)。
+		# max_unlocked +1 的语义与解锁记账保持不动(现有存档/测试依赖),只在推进落点分流。
+		if beaten_stage + 1 < stages.size():
+			advance_target_stage = beaten_stage + 1
+			advance_target_scene = 0
+		else:
+			advance_target_stage = beaten_stage
+			advance_target_scene = BOSS_SCENE
 		mode = Mode.STAGE_CLEAR_COUNTDOWN
 		countdown_remaining = _countdown_len()
 		return

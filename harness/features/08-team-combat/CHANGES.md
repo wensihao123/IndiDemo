@@ -4,7 +4,7 @@ feature: 08-team-combat
 role: Implementer
 status: draft
 updated: 2026-06-20
-inputs: [PLAN.md, harness/arch/REFACTOR-04-team-combat.md, harness/balance/BALANCE-CHANGE-03-team-combat.md, src/combat/enemy_def.gd, src/combat/scene_config.gd, src/core/combat/entity.gd, src/core/combat/progression_controller.gd, src/core/combat/combat_arena.gd, src/core/combat/combat_tuning.gd, src/core/combat/ai_combat_component.gd, src/combat/combat_view.gd, assets/data/combat/stage_01.tres]
+inputs: [PLAN.md, harness/arch/REFACTOR-04-team-combat.md, harness/balance/BALANCE-CHANGE-03-team-combat.md, harness/balance/BALANCE-CHANGE-05-stage2-team-combat.md, src/combat/enemy_def.gd, src/combat/scene_config.gd, src/core/combat/entity.gd, src/core/combat/progression_controller.gd, src/core/combat/combat_arena.gd, src/core/combat/combat_tuning.gd, src/core/combat/ai_combat_component.gd, src/combat/combat_view.gd, assets/data/combat/stage_01.tres, assets/data/combat/stage_02.tres, test/combat/stage_config_test.gd]
 next: Reviewer
 ---
 
@@ -58,6 +58,24 @@ next: Reviewer
 - **③** `combat_view.gd:MAX_WAVE_SLOTS` 加防呆注释:本值=同屏可渲染敌数上限,与 BALANCE WAVE_SIZE 上限耦合;关2 复算若 WAVE_SIZE>4 须同步抬,否则尾部敌人静默漏画。
 - REVIEW §3 之 **①**(ARCHITECTURE-GUIDE 仍写旧 `advance_after_kill`)= Arch Guard 拥有的事实源,**不在 Implementer 职责内**,回 `/arch-guard` 同步。
 - 验证:两文件 `--check-only` 过 + `test/core` **144/144 / exit 0**(纯注释,行为零变)。
+
+### 补遗 3 — 关2 `stage_02.tres` 铺波(2026-06-20,落 BALANCE-CHANGE-05;纯数据,无代码改动)
+承「不做」里的关2 复算 flag——num-smith 复算已出(`balance/BALANCE-CHANGE-05-stage2-team-combat.md`),本期照其 §3+§4 落 `stage_02.tres`:
+- **新建 2 个远程 `EnemyDef` sub_resource**(`position_class=1`,`attack/hp≈0.6×同档近战`):
+  - `RangedSlingerS2`(投石暗影手)hp40/atk4/ilvl18(配 Scene2,基准暗影狼)。
+  - `RangedSlingerS3`(投石食人魔)hp50/atk4/ilvl24(配 Scene3,基准食人魔)。
+  - sprite 本期沿用同场景近战占位贴图(专属远程美术留 UI/juice 轮)。
+- **三普通场景改 `enemy_group`**(WAVE_SIZE 统一 3,序=排位前→后;**保留旧 `enemy` 单敌 fallback** 不删):
+  - Scene1 = `[精英兽人 ×3]`(纯近战,团战入门)。
+  - Scene2 = `[暗影狼, 暗影狼, RangedSlingerS2]`(2 近+1 远)。
+  - Scene3 = `[食人魔, 食人魔, RangedSlingerS3]`(2 近+1 远)。
+- **`kill_count` 7→6**(三普通场景;与「波间不回血」约束配套 = 每场 2 满波累积,BALANCE-CHANGE-05 §2 约束 B)。
+- **Boss(`BossOrcChieftain` hp480/atk24)一字不动**(墙,BALANCE-CHANGE-04)。
+- **关2 普通近战(精英兽人/暗影狼/食人魔)数值全不动**——只把单敌包成波。
+- **偏离记录**:BALANCE-CHANGE-05 §6 把 Scene3 从其触发预览的 4 敌收到 3 敌(波间累积承伤实算 4 会团灭 P1-基线);我照 BALANCE-CHANGE-05 落值 = Scene3 三敌,**非预览的四敌**。WAVE_SIZE≤4 → `MAX_WAVE_SLOTS=4` 无需抬(补遗 2 之③防呆点未触发)。
+- **新增锁值测** `test/combat/stage_config_test.gd::test_stage_02_scenes_are_team_waves`:关2 三场景 `wave_defs().size()==3` 且 `kill_count==6`,Scene1 末位 MELEE / Scene2-3 末位 RANGED(防静默回退单敌或漏远程)。
+- 验证:`--check-only` EXIT=0;`stage_config_test` 7/7 绿(含新测);全量 gdUnit4 **153/153 / 0 fail / exit 0**(report_39)。
+- **接线无变化**:`stage_02.tres` 已在 `CombatView.stages`,改的是其内部 sub_resource;走 §3 既有取波/渲染/门控链路,无新接线。
 
 ## 3. Wiring Contract(接线契约)
 

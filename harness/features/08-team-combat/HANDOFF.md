@@ -60,7 +60,19 @@ size-1 波逐位等价」;`§5⑤` Boss 分支 `advance_after_kill` → `advance
 解算层 144/144 绿 + 五步实现 + REVIEW APPROVE + 三 should-fix 全清 + 占位多敌渲染 playtest 验过。
 
 **剩余清尾(非阻断,后续功能/统一轮处理,不挂 08 名下)**:
-- **关2 .tres 铺波** —— 回 `/num-smith 08-team-combat` 复算 WAVE_SIZE;**复算时若 WAVE_SIZE>4,须同步抬 `combat_view.MAX_WAVE_SLOTS`**(防呆注释已落代码,否则 View 静默漏画,REVIEW §3 之③)。
+- **✅ 2026-06-20 — Num Smith 复算关2 铺波(BALANCE-CHANGE-05)。** 复算结论:关2 三普通场景 WAVE_SIZE
+  统一 = **3**(Scene1 纯 3 近 / Scene2 2 近+1 远 / Scene3 2 近+1 远),`kill_count` 7→6;**WAVE_SIZE≤4
+  无需抬 `MAX_WAVE_SLOTS`**。承伤主导项 = 波间不回血(整场 = 2 满波累积),P1-基线整场 < 100% 不团灭、
+  墙单点仍在 Boss。**最重要偏离:Scene3 落 3 不照预览的 4**(4 会过载团灭,见 BALANCE-CHANGE-05 §6)。
+- **✅ 2026-06-20 — Implementer 落 BALANCE-CHANGE-05(关2 `stage_02.tres` 铺波,CHANGES 补遗 3)。**
+  纯数据:建 2 远程 sub_resource(投石暗影手 hp40/atk4、投石食人魔 hp50/atk4,`position_class=1`)→ 三场景改
+  `enemy_group`(Scene1 纯 3 近 / Scene2-3 各 2 近+1 远,保留 `enemy` fallback)→ `kill_count` 7→6 → Boss 不动 →
+  Scene3 照 BALANCE-CHANGE-05 §6 落 3 敌(非预览 4,4 会团灭 P1-基线)。新增锁值测 `test_stage_02_scenes_are_team_waves`。
+  `--check-only` EXIT=0、全量 gdUnit4 **153/153 绿**(report_39)、`MAX_WAVE_SLOTS=4` 无需抬(WAVE_SIZE≤4)。
+- **✅ 2026-06-20 — 人工 playtest 关2 通过(用户:「试玩没问题」)。** 关2 团战手感/承伤(Scene3 最深档紧度、
+  远程漏血感)+ 占位多敌渲染在关2 视觉经手验通过。关2 团战铺波清尾正式闭合 → **08 全部清尾完结**
+  (关1 + 关2 团战均 playtest 验过、153/153 解算绿、REVIEW APPROVE、四 should-fix 全清)。
+  剩余仅「关1 手感微调(可后续)」属可选,不挂阻断。
 - **🟡 人工 playtest(关1)** —— 手感/视觉/平衡(用户已表示可之后再调)。
 
 ## 决策记录
@@ -68,12 +80,14 @@ size-1 波逐位等价」;`§5⑤` Boss 分支 `advance_after_kill` → `advance
 - **2026-06-19 — [用户拍板] 近战门控 + 远程隔位** —— 一波多敌:前排近战只有"够得着"战士才打、其余排队补位(车轮战);
   后排远程不受门控、从后排即可输出战士(隔位漏血),引入近/远站位动态。来源:用户。
 - **2026-06-19 — [GD 守] 站位 = 抽象前/后排×序(守 #7)** —— 用 `in_range` 门控 + 数组序实现,**绝不做真 2D 走位/碰撞/抛射物**。
+- **2026-06-20 — [用户拍板] 关2 铺波守 ≤4、靠敌单值加压不靠人海** —— Num Smith 复算落 WAVE_SIZE 统一 3、
+  `kill_count` 6;Scene3 因波间不回血实算偏离预览 4→3(4 会团灭)。来源:用户 + BALANCE-CHANGE-05。
 - **2026-06-19 — [GD 留白] 远程"够不到"= AoE 的未来用武之地** —— v1 接受战士够不到后排远程(= 远程持续压力来源);
   这层"前排墙 + 后排远程"结构天然是未来 AoE 的挂点,但 v1 不预埋接口(守"不为没影的系统提前抽象")。
 
 ## 未决 flags
 - **✅ F-ARCH(已解除 2026-06-19)** — Arch Guard 定案(REFACTOR-04):装得下,加性数据扩展 + 一处契约拆分(刷怪/推进 per-enemy→per-wave,#12)。`EnemyDef.position_class`(默认 MELEE).tres 向后兼容;`SceneConfig.enemy_group`(旧 `enemy` 留 fallback);门控归 `CombatArena`、`in_range` 退役。波 size=1 退化等价 = 回归基线。下游 num-smith→planner。
-- **✅ F-NUM(已解除 2026-06-19)** — Num Smith 定稿(BALANCE-CHANGE-03):门控 `G=2`、一波 2–4 随深度递增 / Boss=1、远程少数派 `attack/hp≈0.6×近战`、新增 i8 团战威胁纯加性(守 i4)。关1 威胁校验过(单波≈15% EHP 可生还)。**关2 .tres 落地前需回 num-smith 复算 WAVE_SIZE**(敌值更高)。值走配置(`CombatTuning`/`.tres`)勿硬编码。
+- **✅ F-NUM(已解除 2026-06-19)** — Num Smith 定稿(BALANCE-CHANGE-03):门控 `G=2`、一波 2–4 随深度递增 / Boss=1、远程少数派 `attack/hp≈0.6×近战`、新增 i8 团战威胁纯加性(守 i4)。关1 威胁校验过(单波≈15% EHP 可生还)。**关2 .tres 落地前需回 num-smith 复算 WAVE_SIZE**(敌值更高)。值走配置(`CombatTuning`/`.tres`)勿硬编码。**✅ 关2 复算已出(2026-06-20,BALANCE-CHANGE-05):WAVE_SIZE 3 / `kill_count` 6 / 2 新远程,交 Implementer。**
 - **🟢 F-AOE(明确推后)** — 战士/玩家 AoE 留给未来技能/法师,v1 不做、不预埋接口。团战站位结构是其未来用武之地。
 - **🟢 支柱 1 相容(已判定相容,待 playtest)** — 团战只加画面密度与压力、不加操作(仍全自动)。风险:800×250 窄条里"一群"挤不挤得下/看得清 → 留统一 UI 轮 + playtest。
 - **🟢 UI/juice 推迟** — 本功能阶段用占位程序美术验功能;界面皮/动效/音随全局 UI/juice 统一轮做(用户拍板 2026-06-19)。

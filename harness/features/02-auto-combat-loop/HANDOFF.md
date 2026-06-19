@@ -1,7 +1,7 @@
 ---
 feature: 02-auto-combat-loop
-status: in-progress
-updated: 2026-06-18
+status: done
+updated: 2026-06-20 (frontmatter 状态校正:02 早已收口,见 BACKLOG Done/Decision log 2026-06-18)
 ---
 # HANDOFF — 自动战斗循环 (Auto Combat Loop)
 

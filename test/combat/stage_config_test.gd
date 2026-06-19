@@ -35,6 +35,26 @@ func test_stage_02_loads_and_scene1_harder_than_stage1_scene3() -> void:
 	# 关2 第一场景调得比关1 第三场景硬,以便能触发卡关(PLAN §6 / step1)。
 	assert_float(s2.scenes[0].enemy.max_hp).is_greater(s1.scenes[2].enemy.max_hp)
 
+## 06 立墙锁值:关2 Boss 兽人酋长 = 一堵真墙(BALANCE-CHANGE-04)。锁住 hp480/atk24,防静默回退。
+func test_stage_02_boss_is_the_wall() -> void:
+	var s2: StageConfig = load(STAGE_02)
+	assert_object(s2.boss).is_not_null()
+	assert_str(s2.boss.display_name).is_equal("兽人酋长")
+	assert_float(s2.boss.max_hp).is_equal(480.0)
+	assert_float(s2.boss.attack).is_equal(24.0)
+
+## BALANCE-CHANGE-05 锁波结构:关2 三普通场景 = 团战波(WAVE_SIZE 3、kill_count 6),
+## Scene2/3 末位为远程;防静默回退到单敌或漏掉远程。
+func test_stage_02_scenes_are_team_waves() -> void:
+	var s2: StageConfig = load(STAGE_02)
+	for scene in s2.scenes:
+		assert_int(scene.wave_defs().size()).is_equal(3)
+		assert_int(scene.kill_count).is_equal(6)
+	# Scene1 纯近战(团战入门);Scene2/3 末位为远程(隔位漏血)。
+	assert_int(s2.scenes[0].wave_defs()[2].position_class).is_equal(EnemyDef.PositionClass.MELEE)
+	assert_int(s2.scenes[1].wave_defs()[2].position_class).is_equal(EnemyDef.PositionClass.RANGED)
+	assert_int(s2.scenes[2].wave_defs()[2].position_class).is_equal(EnemyDef.PositionClass.RANGED)
+
 func test_loot_fields_in_valid_range() -> void:
 	for path in [STAGE_01, STAGE_02]:
 		var stage: StageConfig = load(path)

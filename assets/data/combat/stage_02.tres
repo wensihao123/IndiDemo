@@ -11,8 +11,8 @@
 [sub_resource type="Resource" id="BossOrcChieftain"]
 script = ExtResource("1_enemy")
 display_name = "兽人酋长"
-max_hp = 220.0
-attack = 9.0
+max_hp = 480.0
+attack = 24.0
 sprite = ExtResource("2_jibn2")
 drop_chance = 1.0
 item_level = 30
@@ -38,8 +38,9 @@ rarity_weight_gold = 4.0
 
 [sub_resource type="Resource" id="Scene1"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyEliteOrc"), SubResource("EnemyEliteOrc"), SubResource("EnemyEliteOrc")])
 enemy = SubResource("EnemyEliteOrc")
-kill_count = 7
+kill_count = 6
 
 [sub_resource type="Resource" id="EnemyShadowWolf"]
 script = ExtResource("1_enemy")
@@ -56,10 +57,27 @@ rarity_weight_white = 75.0
 rarity_weight_blue = 20.0
 rarity_weight_gold = 5.0
 
+[sub_resource type="Resource" id="RangedSlingerS2"]
+script = ExtResource("1_enemy")
+display_name = "投石暗影手"
+position_class = 1
+max_hp = 40.0
+attack = 4.0
+sprite = ExtResource("5_rmet2")
+drop_chance = 0.6
+item_level = 18
+weight_gold = 60.0
+weight_material = 25.0
+weight_equipment = 15.0
+rarity_weight_white = 78.0
+rarity_weight_blue = 18.0
+rarity_weight_gold = 4.0
+
 [sub_resource type="Resource" id="Scene2"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyShadowWolf"), SubResource("EnemyShadowWolf"), SubResource("RangedSlingerS2")])
 enemy = SubResource("EnemyShadowWolf")
-kill_count = 7
+kill_count = 6
 
 [sub_resource type="Resource" id="EnemyOgre"]
 script = ExtResource("1_enemy")
@@ -76,10 +94,27 @@ rarity_weight_white = 72.0
 rarity_weight_blue = 22.0
 rarity_weight_gold = 6.0
 
+[sub_resource type="Resource" id="RangedSlingerS3"]
+script = ExtResource("1_enemy")
+display_name = "投石食人魔"
+position_class = 1
+max_hp = 50.0
+attack = 4.0
+sprite = ExtResource("6_pnl30")
+drop_chance = 0.65
+item_level = 24
+weight_gold = 55.0
+weight_material = 27.0
+weight_equipment = 18.0
+rarity_weight_white = 72.0
+rarity_weight_blue = 22.0
+rarity_weight_gold = 6.0
+
 [sub_resource type="Resource" id="Scene3"]
 script = ExtResource("2_scene")
+enemy_group = Array[ExtResource("1_enemy")]([SubResource("EnemyOgre"), SubResource("EnemyOgre"), SubResource("RangedSlingerS3")])
 enemy = SubResource("EnemyOgre")
-kill_count = 7
+kill_count = 6
 
 [resource]
 script = ExtResource("3_stage")

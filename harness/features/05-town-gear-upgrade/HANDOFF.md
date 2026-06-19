@@ -1,7 +1,7 @@
 ---
 feature: 05-town-gear-upgrade
-status: in-progress
-updated: 2026-06-19
+status: done
+updated: 2026-06-20 (frontmatter 状态校正:05 早已收口,见 BACKLOG Done/Decision log 2026-06-19)
 ---
 # HANDOFF — 05 城镇:手动换装 + 对比面板 + 装备强化
 

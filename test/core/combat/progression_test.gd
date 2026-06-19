@@ -165,6 +165,37 @@ func test_multi_enemy_wave_clears_one_by_one_without_respawn() -> void:
 	assert_int(a.enemies.size()).is_equal(2)   # 波清空才重刷新一波 2 敌
 	assert_bool(a.has_living_enemy()).is_true()
 
+## 06 决策 B 末关边界:打通"末关"(无下一关)Boss → 倒计时到点不再把游标推到越界空场,
+## 而是指回本关 Boss 循环重刷(v1 终点安全陪伴)。解锁记账语义保持 max_unlocked = 末关+1 不变。
+func test_last_stage_boss_loops_instead_of_advancing_out_of_bounds() -> void:
+	var a := _arena(_warrior(1000.0, 100.0))
+	var p := _prog(a)
+	var stages: Array[StageConfig] = [_stage("唯一关", [1], 1.0)]  # 1 场景 + 1血 Boss = 末关
+	p.begin_run(stages)
+	a.tick_combat()  # 杀场景0 → Boss
+	assert_int(p.cur_scene).is_equal(ProgressionController.BOSS_SCENE)
+	a.tick_combat()  # 杀末关 Boss → 通关倒计时
+	assert_int(p.mode).is_equal(ProgressionController.Mode.STAGE_CLEAR_COUNTDOWN)
+	assert_int(p.max_unlocked_stage).is_equal(1)   # 解锁记账语义不变(现有测试依赖)
+	p.process_countdown(a.tuning.stage_clear_countdown_sec + 0.1)  # 到点 → 重刷末关 Boss
+	assert_int(p.cur_stage).is_equal(0)            # 仍停末关,不越界
+	assert_int(p.cur_scene).is_equal(ProgressionController.BOSS_SCENE)  # 指回 Boss 循环
+	assert_object(p.current_enemy_def()).is_not_null()  # 有怪可打,非空场
+	assert_int(p.mode).is_equal(ProgressionController.Mode.PROGRESSING)
+
+## 06 决策 C:不变量 #9 末关 Boss 已通续战会把游标设成越界 stages.size();begin_run 夹回末关 Boss,非空场。
+func test_begin_run_clamps_out_of_bounds_resume_cursor() -> void:
+	var a := _arena(_warrior(1000.0, 100.0))
+	var p := _prog(a)
+	var stages: Array[StageConfig] = [
+		_stage("一关", [1], 500.0),
+		_stage("二关", [1], 500.0),
+	]
+	p.begin_run(stages, stages.size(), 0)          # 模拟越界续战游标
+	assert_int(p.cur_stage).is_equal(stages.size() - 1)  # 夹回末关
+	assert_int(p.cur_scene).is_equal(ProgressionController.BOSS_SCENE)  # 夹到末关 Boss
+	assert_object(p.current_enemy_def()).is_not_null()   # 有 Boss 可打,非越界空场
+
 func test_current_enemy_def_returns_boss_at_boss_scene() -> void:
 	var a := _arena(_warrior(1000.0, 100.0))
 	var p := _prog(a)
