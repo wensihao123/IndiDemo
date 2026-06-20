@@ -2,11 +2,13 @@ extends Control
 ## 悬浮窗外壳控制器。主窗口即悬浮窗(PLAN D1):无边框、置顶、运行时贴主显示器底部。
 ## 负责:贴底定位、800×250 居中主区的窄屏兜底、占位角色待机微动、收起/展开状态机、置顶切换。
 
-enum State { EXPANDED, COLLAPSED }
+enum State { EXPANDED, COLLAPSED, MENU }
 
 const MAIN_WIDTH := 800.0
 const EXPANDED_HEIGHT := 250
 const COLLAPSED_SIZE := Vector2i(64, 64)
+## MENU = 启动/系统枢纽的居中较大窗。占位尺寸,最终值交 Art Spec(并入全局 UI·juice 一轮)。
+const MENU_SIZE := Vector2i(560, 400)
 
 @export_group("过渡")
 ## 收起/展开时内容淡入/淡出各自的时长(秒)。窗口几何在"全透明不可见"瞬间直接跳变,
@@ -101,6 +103,12 @@ func _collapsed_rect() -> Rect2i:
 	return Rect2i(pos, COLLAPSED_SIZE)
 
 
+func _menu_rect() -> Rect2i:
+	# 居中于工作区(已排除任务栏)。
+	var pos := _usable_rect.position + (_usable_rect.size - MENU_SIZE) / 2
+	return Rect2i(pos, MENU_SIZE)
+
+
 # --- 布局 ---------------------------------------------------------------
 
 func _layout_main_area(win_w: float) -> void:
@@ -111,13 +119,25 @@ func _layout_main_area(win_w: float) -> void:
 	main_area.position = Vector2((win_w - scaled_w) * 0.5, 0.0)
 
 
-# --- 收起/展开状态机 -----------------------------------------------------
+# --- 几何状态机 ---------------------------------------------------------
+
+## 公开几何意图 API(供 GameFlow 横向调用):进/出主菜单几何。复用既有"全透明瞬间跳变"退路,不逐帧缓动。
+func enter_menu_geometry() -> void:
+	_set_state(State.MENU)
+
+
+func enter_game_geometry() -> void:
+	_set_state(State.EXPANDED)
+
 
 func _on_toggle_pressed() -> void:
 	_toggle_collapse()
 
 
 func _toggle_collapse() -> void:
+	# 主菜单态(MENU 几何)无收起出口——离开主菜单只能走流程(继续/新游戏/退出)。
+	if _state == State.MENU:
+		return
 	if _state == State.EXPANDED:
 		_set_state(State.COLLAPSED)
 	else:
@@ -133,7 +153,14 @@ func _set_state(new_state: State) -> void:
 		_geom_tween.kill()
 	# 纯 alpha 交叉淡变期间保持高帧率(alpha 缓动很平滑);收起后的降帧放到序列末尾。
 	Engine.max_fps = fps_expanded
-	var target := _collapsed_rect() if _state == State.COLLAPSED else _expanded_rect()
+	var target: Rect2i
+	match _state:
+		State.COLLAPSED:
+			target = _collapsed_rect()
+		State.MENU:
+			target = _menu_rect()
+		_:
+			target = _expanded_rect()
 	# 交叉淡变:① 当前内容淡到全透明 → ② 此刻窗口已不可见,直接跳变几何(规避 Windows 改窗几何抖动,
 	# PLAN R1 退路) → ③ 切换该显示的节点(展开内容 / 收起 handle) → ④ 再淡回。
 	_geom_tween = create_tween()
@@ -156,11 +183,12 @@ func _apply_idle_fps() -> void:
 
 
 func _refresh_visibility() -> void:
+	# EXPANDED = 贴底游戏条;COLLAPSED = 仅 handle 角标;MENU = 居中窗,游戏条内容全隐(菜单屏由 GameFlow 自管)。
 	var expanded := _state == State.EXPANDED
 	bg_strip.visible = expanded
 	main_area.visible = expanded
 	collapse_btn.visible = expanded
-	handle.visible = not expanded
+	handle.visible = _state == State.COLLAPSED
 
 
 # --- 置顶 ---------------------------------------------------------------

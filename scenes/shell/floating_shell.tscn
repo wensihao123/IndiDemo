@@ -9,6 +9,7 @@
 [ext_resource type="Resource" uid="uid://bktdfwj8vw80w" path="res://assets/data/combat/stage_02.tres" id="7_stage02"]
 [ext_resource type="Script" uid="uid://ss2gd8b3hdfl" path="res://src/combat/town_view.gd" id="8_ambe7"]
 [ext_resource type="Texture2D" uid="uid://v8dv1waar248" path="res://assets/sprites/ui/icon_handle.png" id="8_mubki"]
+[ext_resource type="Script" uid="uid://dv6qhq7u6vfhg" path="res://src/shell/game_flow.gd" id="9_gflow"]
 
 [node name="FloatingShell" type="Control" unique_id=1792418111]
 layout_mode = 3
@@ -47,7 +48,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("5_combat_view")
-stages = Array[ExtResource("5_no5us")]([ExtResource("6_stage01"), ExtResource("7_stage02")])
 
 [node name="TownView" type="Control" parent="MainArea" unique_id=326353560]
 layout_mode = 1
@@ -76,3 +76,13 @@ offset_right = -8.0
 offset_bottom = 39.0
 grow_horizontal = 0
 text = "收起"
+
+[node name="GameFlow" type="Control" parent="." unique_id=2000000001]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("9_gflow")
+stages = Array[ExtResource("5_no5us")]([ExtResource("6_stage01"), ExtResource("7_stage02")])

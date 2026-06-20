@@ -139,6 +139,34 @@ func test_auto_equipped_gear_persists_across_reboot() -> void:
 	assert_str(String(reloaded.base_id)).is_equal(String(GameKeys.SLOT_WEAPON))
 	assert_int(reloaded.ilvl).is_equal(5)
 
+# ── 09-title-main-menu PLAN 步1:has_save / new_game 接缝 ─────────────────────
+
+# 无存档 boot → has_save = false(供主菜单默认态守卫)。
+func test_boot_without_save_sets_has_save_false() -> void:
+	var gc := _booted_gc(false)
+	assert_bool(gc.has_save).is_false()
+
+# new_game:重置起始 roster + 从 0,0 开局 + 落盘;has_save 转 true。
+func test_new_game_resets_begins_and_saves() -> void:
+	var gc := _booted_gc(false)
+	# 先弄脏持久态:塞个非起始角色,验 new_game 会重置回起始 roster。
+	gc.player_state.roster = [_hero()] as Array[Character]
+	gc.new_game(_quick_stages())
+	assert_bool(gc.player_state.roster.is_empty()).is_false()        # 起始 roster 已填
+	assert_int(gc.progression.cur_stage).is_equal(0)                 # 从头开局
+	assert_int(gc.progression.cur_scene).is_equal(0)
+	assert_object(gc.arena.players[0]).is_not_null()                # 队伍就位
+	assert_bool(gc.has_save).is_true()
+	assert_bool(FileAccess.file_exists(TMP_PATH)).is_true()          # 已覆盖落盘
+
+# new_game 落盘后,重 boot 读档 → has_save = true(存在非空档)。
+func test_reboot_after_new_game_sees_save() -> void:
+	var gc := _booted_gc(false)
+	gc.new_game(_quick_stages())
+	var gc2 := _booted_gc(true)
+	assert_bool(gc2.has_save).is_true()
+
+
 # ── PLAN 步5a:进/出城 暂停-恢复(05-town) ───────────────────────────────────
 
 # 进城暂停:停 arena.running + 把战斗中自动穿的装备收口写回 roster(城镇可见)。

@@ -1,9 +1,11 @@
 extends Control
 class_name TownView
-## MainArea 内的城镇工作台(05-town,REFACTOR-03):进城暂停挂机 → 手动换装 + 对比面板 + 装备强化。
-## 独立界面(非模态浮窗):进城 Game.pause_run() 冻结战斗、显本视图、隐 CombatView;出城反之 Game.resume_run()。
-## 纯表现 + 调持久层元操作(PlayerState.equip_from_bag / unequip_to_bag / enhance_item),逻辑已 gdUnit4 测。
-## v1 单战士:操作首个非空 roster Character 的三槽。
+## MainArea 内的城镇枢纽(05-town + SC-02 / 10-ingame-flow-nav):城镇 = 家/枢纽,落点即此(暂停)。
+## 纯视图执行器(SC-02 D2):**不再自决进出城**——pause/resume + flow 转移全由 GameFlow 主导;
+## 本类只暴露 show_town()/show_combat() 切自身与兄弟 CombatView 的 .visible,及枢纽内四子板块导航。
+## 枢纽四入口:小队(换装+对比)/ 工匠(强化)/ 酒馆(占位)/ 出征(选已解锁关→出击)。
+## 子板块 = 覆盖式 overlay(.visible 切换),不开 Flow 态(M2 只认"在不在城镇")。
+## 纯表现 + 调持久层元操作(equip_from_bag / enhance_item),逻辑已 gdUnit4 测。v1 单战士操作首个非空 roster。
 
 const RARITY_COLOR := {
 	&"white": Color(0.85, 0.85, 0.85),
@@ -14,48 +16,77 @@ const UP_COLOR := Color(0.4, 0.9, 0.45)    # 升:绿
 const DOWN_COLOR := Color(0.95, 0.45, 0.4) # 降:红
 const FLAT_COLOR := Color(0.7, 0.72, 0.78)
 
-var _gc: Node = null                  # /root/Game(GameController)
-var _combat_view: Control = null      # 同 MainArea 的 CombatView,进城时隐藏
-var _selected_slot: StringName = GameKeys.SLOT_WEAPON
+enum Board { HUB, PARTY, SMITH, TAVERN, DEPART }
 
-@onready var _enter_btn := Button.new()     # 战斗态可见:进城
-@onready var _town_root := Control.new()    # 城镇内容根(默认隐藏)
-@onready var _leave_btn := Button.new()     # 城镇态可见:出城
-@onready var _slot_col := VBoxContainer.new()    # 左:三槽 + 当前装备 + 强化
-@onready var _compare_col := VBoxContainer.new() # 中:选中槽的对比/强化信息
-@onready var _bag_col := VBoxContainer.new()     # 右:可换入背包件
+var _gc: Node = null                  # /root/Game(GameController)
+var _combat_view: Control = null      # 同 MainArea 的 CombatView,城镇态隐藏
+var _selected_slot: StringName = GameKeys.SLOT_WEAPON
+var _board := Board.HUB
+
+var _town_root: Control = null        # 城镇内容根(默认隐藏,show_town/show_combat 切)
+var _hub_root: Control = null         # 枢纽层(四入口 + 进度速览)
+var _hub_progress: Label = null
+# 四覆盖式子板块根(互斥 .visible)。
+var _party_overlay: Control = null
+var _smith_overlay: Control = null
+var _tavern_overlay: Control = null
+var _depart_overlay: Control = null
+# 子板块内容列。
+var _party_slot_col: VBoxContainer = null
+var _party_bag_col: VBoxContainer = null
+var _smith_slot_col: VBoxContainer = null
+var _smith_enh_col: VBoxContainer = null
+var _depart_col: VBoxContainer = null
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_to_group("town_view")  # 供 GameFlow 命令 show_town/show_combat + 查询 overlay 态
 	_build_ui()
 	_gc = get_node_or_null("/root/Game")
 	_combat_view = get_parent().get_node_or_null("CombatView")
 	_town_root.visible = false
 
 
-# --- 进/出城 -------------------------------------------------------------
+# --- 纯视图切换(SC-02 D2:GameFlow 调,本类不碰 running)----------------------
 
-func _enter_town() -> void:
-	if _gc == null:
-		return
-	_gc.pause_run()
+## 显城镇枢纽:本视图可见 + 隐兄弟 CombatView + 复位到枢纽层并刷新。pause/resume 由 GameFlow 负责。
+func show_town() -> void:
 	_town_root.visible = true
-	_enter_btn.visible = false
 	if _combat_view != null:
 		_combat_view.visible = false
+	_show_board(Board.HUB)
 	_refresh()
 
 
-func _leave_town() -> void:
-	if _gc == null:
-		return
-	_gc.resume_run()
+## 显战斗视图:隐本城镇内容 + 显 CombatView。pause/resume 由 GameFlow 负责。
+func show_combat() -> void:
 	_town_root.visible = false
-	_enter_btn.visible = true
 	if _combat_view != null:
 		_combat_view.visible = true
+
+
+# --- 枢纽 ↔ 子板块导航(overlay,非 Flow 态)---------------------------------
+
+func _show_board(board: Board) -> void:
+	_board = board
+	_hub_root.visible = board == Board.HUB
+	_party_overlay.visible = board == Board.PARTY
+	_smith_overlay.visible = board == Board.SMITH
+	_tavern_overlay.visible = board == Board.TAVERN
+	_depart_overlay.visible = board == Board.DEPART
+	if board != Board.HUB:
+		_refresh()
+
+
+## 供 GameFlow Esc 处理查询/收起(SC-02 R4:Esc 权威留 GameFlow,本类只答"有无子板块开"+收起)。
+func is_overlay_open() -> bool:
+	return _board != Board.HUB
+
+
+func close_overlay_to_hub() -> void:
+	_show_board(Board.HUB)
 
 
 # --- 数据 ---------------------------------------------------------------
@@ -91,20 +122,43 @@ func _final_stats_if_equipped(c: Character, slot: StringName, candidate: ItemIns
 	return _final_stats(clone)
 
 
-# --- 渲染 ---------------------------------------------------------------
+# --- 渲染:据当前打开的子板块刷新对应内容 ------------------------------------
 
 func _refresh() -> void:
-	_rebuild_slots()
-	_rebuild_compare()
-	_rebuild_bag()
+	_rebuild_hub_progress()
+	match _board:
+		Board.PARTY:
+			_rebuild_slot_selector(_party_slot_col)
+			_rebuild_party_bag()
+		Board.SMITH:
+			_rebuild_slot_selector(_smith_slot_col)
+			_rebuild_smith_enhance()
+		Board.DEPART:
+			_rebuild_depart()
+		_:
+			pass
 
 
-func _rebuild_slots() -> void:
-	for ch in _slot_col.get_children():
+func _rebuild_hub_progress() -> void:
+	if _hub_progress == null:
+		return
+	if _gc == null or _gc.progression == null:
+		_hub_progress.text = ""
+		return
+	var prog = _gc.progression
+	var stage_no: int = prog.cur_stage + 1
+	var sc: int = prog.cur_scene
+	var where := "Boss" if sc == ProgressionController.BOSS_SCENE else "场景 %d/3" % (sc + 1)
+	_hub_progress.text = "当前进度:第 %d 关 · %s(挂机已暂停)" % [stage_no, where]
+
+
+## 可选槽列表(小队 / 工匠共用):显当前装备,▶ 标选中槽,点击切槽并刷新。
+func _rebuild_slot_selector(col: VBoxContainer) -> void:
+	for ch in col.get_children():
 		ch.queue_free()
 	var c := _hero()
 	if c == null:
-		_slot_col.add_child(_label("(无角色)", 12, FLAT_COLOR))
+		col.add_child(_label("(无角色)", 12, FLAT_COLOR))
 		return
 	for slot in GameKeys.SLOTS:
 		var inst: ItemInstance = c.equipped.get(slot)
@@ -115,51 +169,23 @@ func _rebuild_slots() -> void:
 		sel_btn.pressed.connect(_on_select_slot.bind(slot))
 		row.add_child(sel_btn)
 		var desc := "—"
-		var col := FLAT_COLOR
+		var scol := FLAT_COLOR
 		if inst != null:
 			desc = "ilvl%d %s%s" % [inst.ilvl, _rarity_text(inst.rarity),
 				(" +%d" % inst.enhance_level) if inst.enhance_level > 0 else ""]
-			col = RARITY_COLOR.get(inst.rarity, FLAT_COLOR)
-		row.add_child(_label("  " + desc, 12, col))
-		_slot_col.add_child(row)
+			scol = RARITY_COLOR.get(inst.rarity, FLAT_COLOR)
+		row.add_child(_label("  " + desc, 12, scol))
+		col.add_child(row)
 
 
-func _rebuild_compare() -> void:
-	for ch in _compare_col.get_children():
-		ch.queue_free()
-	var c := _hero()
-	if c == null:
-		return
-	var inst: ItemInstance = c.equipped.get(_selected_slot)
-	_compare_col.add_child(_label("— %s —" % _slot_text(_selected_slot), 13, Color(0.85, 0.88, 0.92)))
-	if inst == null:
-		_compare_col.add_child(_label("(空槽,从右侧背包穿上)", 11, FLAT_COLOR))
-		return
-	# 强化信息行 + 按钮
-	var cfg: EnhanceConfigDef = _registry().get_enhance_config() if _registry() != null else null
-	if cfg != null:
-		if cfg.is_max(inst.enhance_level):
-			_compare_col.add_child(_label("强化:+%d(已满级)" % inst.enhance_level, 12, Color(1.0, 0.82, 0.25)))
-		else:
-			var cost := cfg.cost_for_level(inst.enhance_level)
-			var owned: int = _gc.player_state.get_material(inst.base_id, GameKeys.RARITY_WHITE)
-			_compare_col.add_child(_label("强化:+%d → +%d  花 %d 白材料(拥有 %d)"
-				% [inst.enhance_level, inst.enhance_level + 1, cost, owned], 12, FLAT_COLOR))
-			var enh_btn := Button.new()
-			enh_btn.text = "强化 +1"
-			enh_btn.disabled = owned < cost
-			enh_btn.add_theme_font_size_override("font_size", 12)
-			enh_btn.pressed.connect(_on_enhance.bind(inst))
-			_compare_col.add_child(enh_btn)
-
-
-func _rebuild_bag() -> void:
-	for ch in _bag_col.get_children():
+## 小队·换装:列选中槽的可换背包件 + 换上后各轴差值(绿↑红↓)。
+func _rebuild_party_bag() -> void:
+	for ch in _party_bag_col.get_children():
 		ch.queue_free()
 	var c := _hero()
 	if c == null or _gc.player_state == null:
 		return
-	_bag_col.add_child(_label("— 背包(%s)—" % _slot_text(_selected_slot), 13, Color(0.85, 0.88, 0.92)))
+	_party_bag_col.add_child(_label("— 背包(%s)—" % _slot_text(_selected_slot), 13, Color(0.85, 0.88, 0.92)))
 	var equipped: ItemInstance = c.equipped.get(_selected_slot)
 	var cur_stats := _final_stats(c)
 	var any := false
@@ -176,8 +202,7 @@ func _rebuild_bag() -> void:
 		head.add_child(swap_btn)
 		head.add_child(_label("  ilvl%d %s%s" % [inst.ilvl, _rarity_text(inst.rarity),
 			(" +%d" % inst.enhance_level) if inst.enhance_level > 0 else ""], 12, col))
-		_bag_col.add_child(head)
-		# 对比面板:换上后各轴差值(绿↑红↓),只列有变化的轴。
+		_party_bag_col.add_child(head)
 		if equipped != null:
 			var after := _final_stats_if_equipped(c, _selected_slot, inst)
 			for axis in GameKeys.STATS:
@@ -186,13 +211,84 @@ func _rebuild_bag() -> void:
 					continue
 				var arrow := "↑" if delta > 0.0 else "↓"
 				var dcol := UP_COLOR if delta > 0.0 else DOWN_COLOR
-				_bag_col.add_child(_label("      %s %s%s" % [_stat_name(axis), arrow,
+				_party_bag_col.add_child(_label("      %s %s%s" % [_stat_name(axis), arrow,
 					_format_stat_value(axis, absf(delta))], 10, dcol))
 	if not any:
-		_bag_col.add_child(_label("(无可换 %s)" % _slot_text(_selected_slot), 11, FLAT_COLOR))
+		_party_bag_col.add_child(_label("(无可换 %s)" % _slot_text(_selected_slot), 11, FLAT_COLOR))
+
+
+## 工匠·强化:选中槽装备的 +N → +N+1 花费与按钮(v1 仅承现有"强化 +1")。
+func _rebuild_smith_enhance() -> void:
+	for ch in _smith_enh_col.get_children():
+		ch.queue_free()
+	var c := _hero()
+	if c == null:
+		return
+	var inst: ItemInstance = c.equipped.get(_selected_slot)
+	_smith_enh_col.add_child(_label("— %s —" % _slot_text(_selected_slot), 13, Color(0.85, 0.88, 0.92)))
+	if inst == null:
+		_smith_enh_col.add_child(_label("(空槽,先到小队穿上装备)", 11, FLAT_COLOR))
+		return
+	var cfg: EnhanceConfigDef = _registry().get_enhance_config() if _registry() != null else null
+	if cfg == null:
+		return
+	if cfg.is_max(inst.enhance_level):
+		_smith_enh_col.add_child(_label("强化:+%d(已满级)" % inst.enhance_level, 12, Color(1.0, 0.82, 0.25)))
+		return
+	var cost := cfg.cost_for_level(inst.enhance_level)
+	var owned: int = _gc.player_state.get_material(inst.base_id, GameKeys.RARITY_WHITE)
+	_smith_enh_col.add_child(_label("强化:+%d → +%d  花 %d 白材料(拥有 %d)"
+		% [inst.enhance_level, inst.enhance_level + 1, cost, owned], 12, FLAT_COLOR))
+	var enh_btn := Button.new()
+	enh_btn.text = "强化 +1"
+	enh_btn.disabled = owned < cost
+	enh_btn.add_theme_font_size_override("font_size", 12)
+	enh_btn.pressed.connect(_on_enhance.bind(inst))
+	_smith_enh_col.add_child(enh_btn)
+
+
+## 出征·选关:列 0..max_unlocked_stage 已解锁关 + "继续当前进度"出击(SC-02 D4)。
+func _rebuild_depart() -> void:
+	for ch in _depart_col.get_children():
+		ch.queue_free()
+	if _gc == null or _gc.progression == null:
+		return
+	var prog = _gc.progression
+	var stages: Array = prog.stages
+	_depart_col.add_child(_label("— 出征 · 选择关卡 —", 13, Color(0.85, 0.88, 0.92)))
+	# 主出击:继续当前游标关(resume,吃下城镇换装/强化)。
+	var cur_no: int = prog.cur_stage + 1
+	var cont_btn := Button.new()
+	cont_btn.text = "▶ 出击:继续第 %d 关(沿用当前进度)" % cur_no
+	cont_btn.add_theme_font_size_override("font_size", 13)
+	cont_btn.pressed.connect(_on_depart_continue)
+	_depart_col.add_child(cont_btn)
+	_depart_col.add_child(_label("— 或重选已解锁关卡 —", 11, FLAT_COLOR))
+	for i in stages.size():
+		var st = stages[i]
+		var unlocked: bool = i <= prog.max_unlocked_stage
+		var nm: String = st.stage_name if st != null and st.stage_name != "" else "第 %d 关" % (i + 1)
+		var btn := Button.new()
+		btn.text = ("第 %d 关 · %s" % [i + 1, nm]) + ("" if unlocked else "(未解锁)")
+		btn.disabled = not unlocked
+		btn.add_theme_font_size_override("font_size", 12)
+		if unlocked:
+			btn.pressed.connect(_on_depart_stage.bind(i))
+		_depart_col.add_child(btn)
 
 
 # --- 交互 ---------------------------------------------------------------
+
+func _game_flow() -> Node:
+	return get_tree().get_first_node_in_group("game_flow")
+
+
+func _on_menu_pressed() -> void:
+	# [☰] 系统枢纽:带来源态 TOWN,继续时恢复城镇几何且维持暂停。
+	var gf := _game_flow()
+	if gf != null:
+		gf.open_menu(GameFlow.Return.TOWN)
+
 
 func _on_select_slot(slot: StringName) -> void:
 	_selected_slot = slot
@@ -215,14 +311,24 @@ func _on_enhance(inst: ItemInstance) -> void:
 		_refresh()
 
 
-# --- UI 构建 ------------------------------------------------------------
+## 出击:继续当前进度(resume,GameFlow 据 stage<0 走 resume_run)。
+func _on_depart_continue() -> void:
+	var gf := _game_flow()
+	if gf != null:
+		gf.on_depart(-1, -1)
+
+
+## 出击:重选某已解锁关(begin_run 从该关场景 0 重装)。
+func _on_depart_stage(stage: int) -> void:
+	var gf := _game_flow()
+	if gf != null:
+		gf.on_depart(stage, 0)
+
+
+# --- UI 构建(代码建子节点,减 .tscn 改动;占位排布交 Art Spec 全局 UI·juice 轮)----
 
 func _build_ui() -> void:
-	_enter_btn.text = "进城"
-	_enter_btn.position = Vector2(300, 12)
-	_enter_btn.pressed.connect(_enter_town)
-	add_child(_enter_btn)
-
+	_town_root = Control.new()
 	_town_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_town_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_town_root)
@@ -233,34 +339,129 @@ func _build_ui() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	_town_root.add_child(bg)
 
+	_build_hub()
+	_party_overlay = _build_overlay("小队 · 换装")
+	_smith_overlay = _build_overlay("工匠 · 强化")
+	_tavern_overlay = _build_overlay("酒馆")
+	_depart_overlay = _build_overlay("出征")
+	_build_party_overlay()
+	_build_smith_overlay()
+	_build_tavern_overlay()
+	_build_depart_overlay()
+	_show_board(Board.HUB)
+
+
+func _build_hub() -> void:
+	_hub_root = Control.new()
+	_hub_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_hub_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_town_root.add_child(_hub_root)
+
 	var title := Label.new()
-	title.text = "城镇 · 工作台"
+	title.text = "城镇 · 枢纽(家)"
 	title.position = Vector2(20, 8)
 	title.add_theme_font_size_override("font_size", 16)
-	_town_root.add_child(title)
+	_hub_root.add_child(title)
 
-	_leave_btn.text = "出城"
-	_leave_btn.position = Vector2(710, 10)
-	_leave_btn.pressed.connect(_leave_town)
-	_town_root.add_child(_leave_btn)
+	_hub_progress = _label("", 13, Color(0.8, 0.85, 0.9))
+	_hub_progress.position = Vector2(20, 36)
+	_hub_root.add_child(_hub_progress)
 
-	_slot_col.position = Vector2(20, 40)
-	_slot_col.add_theme_constant_override("separation", 4)
-	_town_root.add_child(_slot_col)
+	# [☰] 系统枢纽入口(城镇态)。
+	var menu_btn := Button.new()
+	menu_btn.text = "☰"
+	menu_btn.position = Vector2(740, 10)
+	menu_btn.pressed.connect(_on_menu_pressed)
+	_hub_root.add_child(menu_btn)
 
-	_compare_col.position = Vector2(300, 40)
-	_compare_col.add_theme_constant_override("separation", 3)
-	_town_root.add_child(_compare_col)
+	# 四入口(占位横排)。出征最右、视觉权重最高留 Art Spec。
+	var entries := [
+		["小队", Board.PARTY],
+		["工匠", Board.SMITH],
+		["酒馆", Board.TAVERN],
+		["出征", Board.DEPART],
+	]
+	var x := 30.0
+	for e in entries:
+		var b := Button.new()
+		b.text = e[0]
+		b.custom_minimum_size = Vector2(160, 56)
+		b.position = Vector2(x, 90)
+		b.add_theme_font_size_override("font_size", 18)
+		b.pressed.connect(_show_board.bind(e[1]))
+		_hub_root.add_child(b)
+		x += 185.0
 
-	# 背包可换件可能很多 → 套 ScrollContainer 才能滚到底(占位,精修留 UI·juice 轮)。
+
+## 通用子板块外壳:标题 + 返回枢纽按钮;内容由各 _build_*_overlay 填。默认隐藏。
+func _build_overlay(title_text: String) -> Control:
+	var ov := Control.new()
+	ov.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ov.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ov.visible = false
+	_town_root.add_child(ov)
+
+	var title := Label.new()
+	title.text = title_text
+	title.position = Vector2(20, 8)
+	title.add_theme_font_size_override("font_size", 16)
+	ov.add_child(title)
+
+	var back := Button.new()
+	back.text = "← 返回枢纽"
+	back.position = Vector2(660, 10)
+	back.add_theme_font_size_override("font_size", 12)
+	back.pressed.connect(close_overlay_to_hub)
+	ov.add_child(back)
+	return ov
+
+
+func _build_party_overlay() -> void:
+	_party_slot_col = VBoxContainer.new()
+	_party_slot_col.position = Vector2(20, 40)
+	_party_slot_col.add_theme_constant_override("separation", 4)
+	_party_overlay.add_child(_party_slot_col)
+
+	# 背包可换件可能很多 → ScrollContainer(占位,精修留 UI·juice 轮)。
 	var bag_scroll := ScrollContainer.new()
-	bag_scroll.position = Vector2(540, 40)
-	bag_scroll.size = Vector2(250, 205)
+	bag_scroll.position = Vector2(300, 40)
+	bag_scroll.size = Vector2(480, 200)
 	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_town_root.add_child(bag_scroll)
-	_bag_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bag_col.add_theme_constant_override("separation", 1)
-	bag_scroll.add_child(_bag_col)
+	_party_overlay.add_child(bag_scroll)
+	_party_bag_col = VBoxContainer.new()
+	_party_bag_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_bag_col.add_theme_constant_override("separation", 1)
+	bag_scroll.add_child(_party_bag_col)
+
+
+func _build_smith_overlay() -> void:
+	_smith_slot_col = VBoxContainer.new()
+	_smith_slot_col.position = Vector2(20, 40)
+	_smith_slot_col.add_theme_constant_override("separation", 4)
+	_smith_overlay.add_child(_smith_slot_col)
+
+	_smith_enh_col = VBoxContainer.new()
+	_smith_enh_col.position = Vector2(300, 40)
+	_smith_enh_col.add_theme_constant_override("separation", 3)
+	_smith_overlay.add_child(_smith_enh_col)
+
+
+func _build_tavern_overlay() -> void:
+	var lbl := _label("酒馆 · 招募(敬请期待)", 14, FLAT_COLOR)
+	lbl.position = Vector2(40, 110)
+	_tavern_overlay.add_child(lbl)
+
+
+func _build_depart_overlay() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(20, 40)
+	scroll.size = Vector2(760, 200)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_depart_overlay.add_child(scroll)
+	_depart_col = VBoxContainer.new()
+	_depart_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_depart_col.add_theme_constant_override("separation", 4)
+	scroll.add_child(_depart_col)
 
 
 # --- 格式化(与 CombatView 同语言;v1 三行重复优于过早抽象)----------------

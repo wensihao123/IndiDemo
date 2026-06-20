@@ -18,6 +18,9 @@ var save_path := "user://savegame.json"
 ## 测试可置 false 跳过 _ready 自动 boot,改以注入参数手动调 _boot。
 var auto_boot := true
 
+## boot 时落定:存档文件是否存在且非空(供主菜单"继续 vs 新游戏"默认态守卫读)。new_game 后置 true。
+var has_save := false
+
 ## 从存档恢复的续战游标(begin_run 不显式传 stage/scene 时用)。
 var _resume_stage := 0
 var _resume_scene := 0
@@ -52,6 +55,7 @@ func _boot(config_dir: String = DataRegistry.DEFAULT_CONFIG_DIR, load_save: bool
 	var save: Dictionary = {}
 	if load_save:
 		save = save_system.load_file(save_path)
+	has_save = not save.is_empty()
 	if not save.is_empty():
 		save_system.apply(save, player_state, progression, registry)
 	else:
@@ -84,6 +88,24 @@ func begin_run(stages: Array[StageConfig], stage: int = -1, scene: int = -1) -> 
 			arena.loot_equipment = e.equipment
 			break
 	progression.begin_run(stages, s, sc)
+
+
+## 新游戏:覆盖单档(落盘即清旧档,无需 SaveSystem.delete)。清持久态 → 重置起始 roster → 从头开局 → 立即落盘。
+## 破坏性动作,调用方(GameFlow)对有档玩家须先过覆盖确认。
+func new_game(stages: Array[StageConfig]) -> void:
+	player_state.reset()
+	player_state.roster = registry.get_starting_roster()
+	_resume_stage = 0
+	_resume_scene = 0
+	begin_run(stages, 0, 0)
+	has_save = true
+	_autosave()
+
+
+## 退出游戏:autosave 后退进程(供退出确认用,不依赖 WM_CLOSE_REQUEST 通知一定触发)。
+func quit_game() -> void:
+	_autosave()
+	get_tree().quit()
 
 
 ## 进城:冻结当前挂机,先把活体装备收口写回持久 roster(否则城镇看不到/会改丢战斗中自动穿的装备)。

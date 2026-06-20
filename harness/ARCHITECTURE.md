@@ -1,5 +1,5 @@
 ---
-updated: 2026-06-19
+updated: 2026-06-20
 ---
 
 # ARCHITECTURE — test-2 (2D 横版挂机 ARPG)
@@ -64,13 +64,14 @@ updated: 2026-06-19
 | `StatsComponent` | 持 base + modifier 列表;`Final = (Base + ΣFlat) × (1 + ΣPercent)`,脏标记缓存;对外**只读**最终值 | 不知道装备/技能存在,只认 modifier |
 | `EquipmentComponent` | 管槽位;穿/脱 `ItemInstance` → 向 `StatsComponent` 注入/回收 modifier(**无损卸载**) | 只翻译"装备→modifier",不算最终值 |
 | `SkillComponent` | 读 `StatsComponent` 最终值;普攻/技能的**射程判定 / CD / 伤害结算**(02/03 的 6 维公式搬入此处) | 不碰动画/位置移动;只出"对谁造成多少" |
-| `AICombatComponent` | 轻量状态机:寻敌 / 接近(lane)/ 进射程 / 出手 / 目标选择(集火/AoE) | 不算伤害(委托 Skill);不播动画 |
+| `AICombatComponent` | **现状 = 无状态目标选择**(`select_target` 集火最前存活;近战门控上移到 `CombatArena._front_melee_attackers`)。〔原描述"轻量状态机:寻敌/接近/进射程/出手"已不符现实,见 STATE-MACHINES §6.5;未来技能带吟唱/前摇再引实体级战斗 FSM〕 | 不算伤害(委托 Skill);不播动画 |
 | `AnimationComponent` | 监听 AI/Skill 事件播序列帧,**纯表现** | **绝不参与数值**;缺席不影响演算 |
 
 ### 3.2 全局系统
 | 系统 | 形态 | 职责 |
 |------|------|------|
-| `GameController`(`Game`) | **autoload** | **单局编排座 + boot 入口**:读全局 `PlayerState`、持有 `DataRegistry`+per-run `arena`/`progression`,装配并驱动一局;autosave。**不"拥有"持久态**(REFACTOR-02) |
+| `GameController`(`Game`) | **autoload** | **单局编排座 + boot 入口**:读全局 `PlayerState`、持有 `DataRegistry`+per-run `arena`/`progression`,装配并驱动一局;autosave。**不"拥有"持久态**(REFACTOR-02)。〔✅ REFACTOR-05 已落地:加 `has_save` 字段 + `new_game(stages)`/`quit_game()` 机制接缝;`begin_run` 触发点已从 CombatView 上移到 GameFlow〕 |
+| `GameFlow`(协调器) | **✅ 表现层节点(REFACTOR-05,非 autoload;`src/shell/game_flow.gd`)** | 显式游戏流程机 `enum Flow{BOOT,TITLE,EXPLORE,TOWN,MENU_OVERLAY}` + 来源寄存器 `Return` + 宿主四菜单屏;FloatingShell 直接子(`get_parent()` 取几何 API 宿主),入组 `game_flow` 供视图查找。**向下**调 `Game.begin_run/new_game/quit_game`、**横向**调 `floating_shell` 几何 API 命令 MENU↔strip;**绝不动 `arena.running`**(菜单不暂停 sim)。**core 永不依赖它**。已落地 + 验收,见 REFACTOR-05 / STATE-CHANGE-01 |
 | `DataRegistry` | **`Game` 持有(RefCounted,非 autoload)— 座位已定案(REFACTOR-03)** | 启动加载 + **校验** .tres/JSON 模板,对外发 def 对象;`Game._boot` 无条件创建 → `Game.registry` 恒可用(与是否有活跃战斗无关)。多消费者(05 城镇战斗外读模板)经 `Game.registry` 读或构造时注入,**不升 autoload**(immutable read-only 不值 autoload 座位 + 避 D4 数据层单测 orphan) |
 | `LootGenerator` | 纯逻辑模块 | 模板→实例流水线:据 怪/ilvl/掉落表 roll `ItemInstance`(B-4 PoE 式 Tier) |
 | `CombatArena` / `CombatResolver` | per-run | 编排一局:lane 站位、固定步长 tick、目标选择;伤害结算**委托 SkillComponent** |
@@ -85,6 +86,7 @@ updated: 2026-06-19
 - 系统 → 数据层;
 - 组件:同 `Entity` 内可直调,跨实体 / 跨系统用 **signal**;
 - **数据层不依赖任何;持久层不依赖战斗层;逻辑层不依赖表现层。**
+- 〔✅ REFACTOR-05 已落地〕**流程协调 `GameFlow` 属表现层**:向下调 `Game` 机制方法(表现→逻辑,合法)+ 横向调 `floating_shell` 几何 API(层内);视图→GameFlow 经 group `game_flow` 查找(不写死路径)。**core 永不反向依赖 `GameFlow`**。把流程机放进 core autoload 会逆此方向,故归表现层。代码评审确认依赖方向无破。
 
 ## 4. 关键不变量与约定 / Invariants & contracts
 
@@ -119,6 +121,8 @@ updated: 2026-06-19
 - **lane 布局是新设计** — 档位数(几排/一波几位)、站位几何、接近时长待 playtest 定;ARCHITECTURE 只定"槽位抽象"原则,具体值留数值专章。**08(REFACTOR-04)落实了"一波多敌 + 近/远 + 近战门控"这层(纯数组序+标签,守 #7);真 lane 几何 / 接近时长 / 一场多波编排仍留作未来债。**
 - **组件 Node vs RefCounted —【已决 F5】**:`Entity` + 逻辑组件(Stats/Equipment/Skill/AICombat)全 `RefCounted`,由 `CombatArena` 直接方法调用驱动(不靠 `_process`,保 headless 确定 + 免 orphan);`AnimationComponent` 等表现节点在层 6 树内另挂、引用战斗实体但不混入逻辑。
 - **save 格式版本化** — 以后加字段需版本号 + 迁移;留 `SaveSystem` 设计,本期内存态先行。
+- **【REFACTOR-05 已落地·遗留张力】屏可见性双发起点** — 流程协调器 `GameFlow` 管 MENU↔游戏切换,而 EXPLORE↔TOWN 进出城仍由 `TownView` 自管(`pause_run`+兄弟 `.visible`)。为限本期爆炸半径有意保留;屏数量长大后宜统一到协调器单一发起点(亦记于 STATE-MACHINES §6.4 / UX-MAP 债 #4)。
+- **【REFACTOR-05 已落地·遗留张力】ScreenManager/统一 FSM 范式 仍欠** — 本期 4 屏用 show/hide(`GameFlow._show_only`/`_hide_all_screens`),未上屏管理器/StateMachine 基类(守 hard-NO 不过早抽象,代码评审确认无过度工程)。屏长大后再做(亦呼应 STATE-MACHINES §6.1 范式债)。
 - **JSON 校验严格度** — DataRegistry 校验是防策划数据错的第一道闸,别偷懒(类型/门槛/部位池合法性)。
 - **✅ `DataRegistry` 座位已定案(REFACTOR-03,2026-06-19)** — 05-town 把它变多消费者,复审结论 = **维持 owned-RefCounted,不升 autoload**:城镇经 `Game.registry`(`Game._boot` 无条件创建、恒可用)读或构造时注入。理由:immutable read-only 蓝图不值 autoload 座位,且 Node-autoload 会重引 D4 数据层单测 orphan。原则不变(autoload 只留给可变持久/发信号的根 `PlayerState`,只读依赖保持 owned)。**§6 复审债闭合。**
 - **`PlayerState` autoload 测试隔离(REFACTOR-02)** — autoload 在测试进程内持久,故 `_boot` 须 **reset-on-boot**(`player_state.reset()` 清 roster/bag/材料后再 load/默认 roster);"重启"语义用 reset+load 表达,比"new 第二个 GameController"更忠实(证存档文件而非内存残留驱动恢复)。落地见 `arch/REFACTOR-02-playerstate-seat.md` §4 = 步 5 §0。

@@ -5,9 +5,6 @@ class_name CombatView
 ## 符号/轻演出版:敌人用占位 primitive,伤害飘字 + 战斗日志 + 进度读出 + 推进/修整按钮 + 掉落分级 FX。
 ## 正式敌人符号 / 蓝光柱 / 金光 FX / 音效 = Art Spec → Image Prompt 下游补(PLAN §5 Flag)。
 
-## 本局可玩关卡;在场景里把 stage_01 / stage_02 的 .tres 拖进来(数据走 Resource,不硬编码路径)。
-@export var stages: Array[StageConfig] = []
-
 const LOG_LINES := 4
 const RARITY_COLOR := {
 	&"white": Color(0.85, 0.85, 0.85),
@@ -67,6 +64,8 @@ var _slot_hp_bar: Array[ColorRect] = []
 @onready var _enrage_label := Label.new()  # 敌人软狂暴横幅(克制:窗内一行,读 enraged 态)
 @onready var _retreat_invite_label := Label.new()  # 〔06〕卡关时克制的"回城变强"邀请(只读 GRINDING 态,不弹窗、可无视)
 @onready var _push_btn := Button.new()
+@onready var _menu_btn := Button.new()  # [☰] 回主菜单(系统枢纽);占位排布交 Art Spec
+@onready var _return_btn := Button.new()  # 〔SC-02〕回城:置「待回城」标记,本波结算后返城(支柱 1:不打断)
 @onready var _flash := ColorRect.new()
 @onready var _fx_layer := Control.new()
 # 只读查阅面板(掉落包 + 当前装备双栏);默认隐藏,按钮切显隐,事件驱动刷新(不每帧)。
@@ -95,9 +94,26 @@ func _ready() -> void:
 	_arena.item_dropped.connect(_on_item_dropped)
 	_prog.boss_cleared.connect(_on_boss_cleared)
 	_push_btn.pressed.connect(func(): _prog.request_push())
-	if not stages.is_empty():
-		_gc.begin_run(stages)
 	_push_log("⚔ 战斗开始")
+
+
+func _on_menu_pressed() -> void:
+	# 经 group 找 GameFlow(跨层,不写死路径 D7);带来源态 EXPLORE,继续时恢复战斗几何。
+	var gf := _game_flow()
+	if gf != null:
+		gf.open_menu(GameFlow.Return.EXPLORE)
+
+
+## 〔SC-02〕回城钮:切「待回城」标记(GameFlow 持态,本波结算后返城)。
+func _on_return_pressed() -> void:
+	var gf := _game_flow()
+	if gf != null:
+		gf.on_request_return()
+
+
+## 经 group 取 GameFlow(CombatView._ready 早于 GameFlow 入组 → 不能缓存,惰性取)。
+func _game_flow() -> Node:
+	return get_tree().get_first_node_in_group("game_flow")
 
 
 func _process(_delta: float) -> void:
@@ -231,6 +247,12 @@ func _update_progress_and_buttons() -> void:
 		_countdown_label.text = "通关!%.1fs 后推进" % maxf(0.0, _prog.countdown_remaining)
 	# 软狂暴横幅:只要当前敌人处于狂暴态就常驻显示(start_battle 复位 enraged → 自动消失)。
 	_enrage_label.visible = _arena.has_living_enemy() and _arena.enraged
+	# 〔SC-02〕回城钮态:已请求则改文案提示(本波结算后返城);未请求显「回城」。
+	var gf := _game_flow()
+	if gf != null and gf.has_method("is_return_pending") and gf.is_return_pending():
+		_return_btn.text = "已请求回城 · 本波后返"
+	else:
+		_return_btn.text = "回城"
 
 
 func _progress_text() -> String:
@@ -561,6 +583,18 @@ func _build_ui() -> void:
 	_push_btn.position = Vector2(660, 12)
 	_push_btn.visible = false
 	add_child(_push_btn)
+
+	# [☰] 系统枢纽入口:点开回主菜单覆盖层(来源态 EXPLORE);sim 不暂停(GameFlow.open_menu 守支柱 1)。
+	_menu_btn.text = "☰"
+	_menu_btn.position = Vector2(596, 12)
+	_menu_btn.pressed.connect(_on_menu_pressed)
+	add_child(_menu_btn)
+
+	# 〔SC-02〕回城钮:点击切「待回城」标记(再点取消),本波结算后自动返城;sim 不暂停。
+	_return_btn.text = "回城"
+	_return_btn.position = Vector2(660, 44)
+	_return_btn.pressed.connect(_on_return_pressed)
+	add_child(_return_btn)
 
 	# 金装一闪覆盖层(铺满主区)。
 	_flash.color = Color(1.0, 0.9, 0.4)

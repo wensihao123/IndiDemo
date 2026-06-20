@@ -17,6 +17,9 @@ enum QueuedAction { NONE, PUSH, REST }
 signal boss_cleared(stage: int)
 ## 玩家点"修整"离开本轮:v1 落 stub(承 director 信号)。
 signal rest_requested
+## 〔SC-02〕一个波界已结算(波清空推进 或 团灭回退,均算一次)。GameFlow 据此在「待回城」时返城。
+## 语义 = 不变量 #12 的波界粒度;M1 仍对城镇无感,只在每条波界路径后发且只发一次(包裹法,见下)。
+signal wave_boundary_settled
 
 ## 受控的单场编排器(begin_run 时回写 arena.progression = self)。
 var arena: CombatArena = null
@@ -113,7 +116,14 @@ func register_kill() -> void:
 ## GRINDING → 执行入队推进/修整,否则满 kill_count 回满再刷;
 ## Boss → 永久解锁 + 进通关倒计时;普通场景 → 计数达标进下一场景(末场景→Boss),过场景回满。
 ## 由 CombatArena 在 tick 内检测 not _has_living(enemies) 时调(波 size=1 即退化为旧逐杀触发,等价)。
+## 〔SC-02 包裹法〕公有入口 = 跑推进逻辑(_impl,有多条 return 分支)后统一发 wave_boundary_settled,
+## 保证每条波界路径都发且只发一次;CombatArena 调用名不变(仍调本 advance_after_wave)。
 func advance_after_wave() -> void:
+	_advance_after_wave_impl()
+	wave_boundary_settled.emit()
+
+
+func _advance_after_wave_impl() -> void:
 	if mode == Mode.GRINDING:
 		if _queued == QueuedAction.PUSH:
 			_queued = QueuedAction.NONE
@@ -157,7 +167,13 @@ func advance_after_wave() -> void:
 
 
 ## 团灭回退(承 _retreat_after_wipe :368-396,四条规则):算无尽刷落点 + 推进按钮目标,进 GRINDING,复活重刷。
+## 〔SC-02 包裹法〕同 advance_after_wave:团灭也是一个波界结算,跑回退逻辑后发 wave_boundary_settled。
 func retreat_after_wipe() -> void:
+	_retreat_after_wipe_impl()
+	wave_boundary_settled.emit()
+
+
+func _retreat_after_wipe_impl() -> void:
 	var s := cur_stage
 	var i := cur_scene
 	if i == BOSS_SCENE:

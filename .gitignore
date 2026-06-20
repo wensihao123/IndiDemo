@@ -7,3 +7,6 @@
 
 screenshot/
 reports/
+
+# 过程参考文档(决策辅助报告,非版本控制事实源)
+doc/
